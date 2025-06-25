@@ -1,0 +1,343 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:memory_pins_app/presentation/Pages/sign_up_page.dart';
+import 'package:memory_pins_app/presentation/Widgets/sign_in_button.dart';
+import 'package:memory_pins_app/services/auth_service.dart';
+import 'package:memory_pins_app/services/navigation_service.dart';
+import 'package:memory_pins_app/utills/Constants/images.dart';
+import 'package:memory_pins_app/utills/Constants/ui.dart';
+
+class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final AuthService _authService = AuthService();
+
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool isPasswordVisible = false;
+  bool _isLoading = false;
+
+  void _handleSignIn() async {
+    if (_formKey.currentState?.validate() ?? false) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        final user = await _authService.signIn(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        );
+
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+        });
+
+        if (user != null) {
+          print("User signed in: [38;5;2m");
+          if (!mounted) return;
+
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+        } else {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Invalid credentials. Please try again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('An error occurred: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF15212F),
+      body: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 30),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 23),
+                      child: Text(
+                        "Sign in",
+                        style: GoogleFonts.kanit(
+                          color: Color(0xFFEBA145),
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    Image.network(Images.signInImg, fit: BoxFit.contain),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 16),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    labelText: 'Email',
+                    labelStyle: const TextStyle(color: Colors.white),
+                    hintText: 'Enter your email...',
+                    hintStyle: TextStyle(color: Color(0xFF919EAA)),
+
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Color(0xFF3C495C)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Color(0xFF3C495C)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Color(0xFFDAA520)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Color(0xFFDAA520)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    errorStyle: TextStyle(color: Color(0xFFDAA520)),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your email';
+                    }
+                    if (!RegExp(
+                      r'^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$',
+                    ).hasMatch(value)) {
+                      return 'Please enter a valid email address';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              SizedBox(height: 20),
+
+              // Password Text Field
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextFormField(
+                  controller: _passwordController,
+                  obscureText: !isPasswordVisible, // Toggle visibility
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    labelText: 'Password',
+                    labelStyle: const TextStyle(color: Colors.white),
+                    hintText: 'Enter your Password',
+                    hintStyle: TextStyle(color: Color(0xFF919EAA)),
+
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        isPasswordVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          isPasswordVisible = !isPasswordVisible;
+                        });
+                      },
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Color(0xFF3C495C)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Color(0xFF3C495C)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Color(0xFFDAA520)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Color(0xFFDAA520)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    errorStyle: TextStyle(color: Color(0xFFDAA520)),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter your password';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              SizedBox(height: 28),
+
+              _isLoading
+                  ? Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  )
+                  : Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: GestureDetector(
+                      onTap: () {
+                        if (_formKey.currentState!.validate()) {
+                          _handleSignIn();
+                        }
+                      },
+                      child: SignInButton(
+                        text: "Sign in",
+                        icon: Icons.arrow_forward_sharp,
+                      ),
+                    ),
+                  ),
+              SizedBox(height: 24),
+
+              _isLoading
+                  ? Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  )
+                  : Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: GestureDetector(
+                      onTap: () {
+                        _authService.signInWithApple();
+                      },
+                      child: SignInButton(
+                        iconFirst: true,
+                        icon: Icons.apple_sharp,
+                        text: "Sign in with Apple",
+                        isWhiteBackground: true,
+                      ),
+                    ),
+                  ),
+
+              SizedBox(height: 12),
+
+              _isLoading
+                  ? Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  )
+                  : Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: GestureDetector(
+                      onTap: () async {
+                        setState(() {
+                          _isLoading = true;
+                        });
+                        try {
+                          await _authService.signInAnonymously(context);
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            (SnackBar(content: Text("An error occured :$e"))),
+                          );
+                        } finally {
+                          if (mounted) {
+                            setState(() {
+                              _isLoading = false;
+                            });
+                          }
+                        }
+                      },
+                      child: SignInButton(
+                        icon: Icons.arrow_forward_sharp,
+                        text: "Continue as Guest",
+                        isWhiteBackground: true,
+                      ),
+                    ),
+                  ),
+              SizedBox(height: 60),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Don’t have an account?",
+                    style: GoogleFonts.nunitoSans(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+
+                  SizedBox(width: 4),
+
+                  GestureDetector(
+                    onTap: () {
+                      NavigationService.pushNamed('/signup');
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            width: 1.5,
+                            color: Color(0xFFEBA145),
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        "Sign up",
+                        style: GoogleFonts.nunitoSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: Color(0xFFEBA145),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

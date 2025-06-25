@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"car-race-tracker","appId":"1:12492181772:android:af1ff317132df6ae0e7929","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"car-race-tracker","configurations":{"android":"1:12492181772:android:af1ff317132df6ae0e7929","ios":"1:12492181772:ios:17172e29f2bef1c10e7929"}}}}}}

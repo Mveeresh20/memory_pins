@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "12492181772",
+    "firebase_url": "https://car-race-tracker-default-rtdb.firebaseio.com",
+    "project_id": "car-race-tracker",
+    "storage_bucket": "car-race-tracker.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:12492181772:android:af1ff317132df6ae0e7929",
+        "android_client_info": {
+          "package_name": "com.example.memory_pins_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDOnbuUCoX6_XCAc4GLxMnWJL9e4wAccXI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:12492181772:android:4703886ce6f998400e7929",
+        "android_client_info": {
+          "package_name": "com.example.racecar_tracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDOnbuUCoX6_XCAc4GLxMnWJL9e4wAccXI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
