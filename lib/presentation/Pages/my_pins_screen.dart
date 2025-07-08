@@ -1,19 +1,23 @@
 // screens/my_pins_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart'; // Assuming you use GoogleFonts
+import 'package:google_fonts/google_fonts.dart';
 import 'package:memory_pins_app/models/pin.dart';
 import 'package:memory_pins_app/models/pin_item.dart';
 import 'package:memory_pins_app/presentation/Pages/create_pin_screen.dart';
 import 'package:memory_pins_app/presentation/Widgets/pin_card_widget.dart';
 import 'package:memory_pins_app/presentation/Widgets/recording_dialogue.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
+import 'package:memory_pins_app/services/app_integration_service.dart';
+import 'package:memory_pins_app/providers/pin_provider.dart';
+import 'package:memory_pins_app/providers/user_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/app_padding.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/show_custom_dialogue.dart';
 import 'package:memory_pins_app/utills/Constants/ui.dart';
-import 'package:path/path.dart';
+import 'package:path/path.dart' as path;
 // Your PinCard widget
 
 class MyPinsScreen extends StatefulWidget {
@@ -24,64 +28,9 @@ class MyPinsScreen extends StatefulWidget {
 }
 
 class _MyPinsScreenState extends State<MyPinsScreen> {
-  // This is your dynamic data source
-  // In a real app, this would come from an API call, database, etc.
-  // For demonstration, we'll use a hardcoded list.
-  final List<PinItem> _allPins = [
-    PinItem(
-      location: 'New Jersey',
-      // Example flag emoji
-      title: 'Rainy Window Seat',
-      emoji: Images.smileImg,
-      photoCount: 7,
-      audioCount: 1,
-      imageUrls: [
-        Images.umbrellaImg,
-        Images.childUmbrella,
-        Images.manWithRiver,
-        Images.rainImg,
-        Images.umbrellaImg
-      ],
-      viewsCount: 34,
-      playsCount: 12,
-    ),
-    PinItem(
-      location: 'Washington DC',
-      flagEmoji: '🇺🇸',
-      title: 'Sunset Goodbye',
-      emoji: Images.confusionImg,
-      photoCount: 9,
-      audioCount: 2,
-      imageUrls: [
-        Images.umbrellaImg,
-        Images.childUmbrella,
-        Images.manWithRiver,
-        Images.rainImg
-      ],
-      viewsCount: 500,
-      playsCount: 5,
-    ),
-    PinItem(
-      location:
-          'Inter Milan', // Assuming this is a place, not the football club
+  final AppIntegrationService _appService = AppIntegrationService();
+  String _selectedMonth = 'August';
 
-      title: 'Lighthouse Curve',
-      emoji: Images.dancingImg,
-      photoCount: 7,
-      audioCount: 1,
-      imageUrls: [
-        Images.umbrellaImg,
-        Images.childUmbrella,
-        Images.manWithRiver,
-        Images.rainImg
-      ],
-      viewsCount: 34,
-      playsCount: 12,
-    ),
-    // Add more PinItem instances as needed
-  ];
-
-  String _selectedMonth = 'August'; // For the dropdown
   // List of available months for the dropdown
   final List<String> _months = [
     'January',
@@ -99,131 +48,253 @@ class _MyPinsScreenState extends State<MyPinsScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Load user pins when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserPins();
+    });
+  }
+
+  void _loadUserPins() {
+    final pinProvider = Provider.of<PinProvider>(context, listen: false);
+    pinProvider.loadUserPins();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF131F2B), // Dark background color
+      backgroundColor: const Color(0xFF131F2B),
+      body: Consumer2<PinProvider, UserProvider>(
+        builder: (context, pinProvider, userProvider, child) {
+          final userPins = pinProvider.userPins;
+          final isLoading = pinProvider.isLoading;
+          final error = pinProvider.error;
 
-      body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16).copyWith(top: 16),
-        child: SingleChildScrollView(
-          child: SafeArea(
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16).copyWith(top: 16),
+            child: SingleChildScrollView(
+              child: SafeArea(
+                child: Column(
                   children: [
-                    Text(
-                      'My Pins',
-                      style: GoogleFonts.nunitoSans(
-                        color: Colors.white,
-                        fontSize: screenWidth * 0.045,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'My Pins',
+                          style: GoogleFonts.nunitoSans(
+                            color: Colors.white,
+                            fontSize: screenWidth * 0.045,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            NavigationService.pushNamed('/my-tapu');
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                                borderRadius: UI.borderRadius8,
+                                color: AppColors.frameBgColor),
+                            child: Padding(
+                              padding: AppPadding.allPadding10,
+                              child: Image.asset(
+                                Images.parentVector,
+                              ),
+                            ),
+                          ),
+                        )
+                      ],
                     ),
-                    GestureDetector(
-                      onTap: () {
-                        NavigationService.pushNamed('/my-tapu');
 
-                        // showDialog(
-                        //   context: context,
-                        //   builder: (BuildContext context) {
-                        //     return const RecordingDialog();
-                        //   },
-                        // );
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
+                    // Month Dropdown
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 18),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Color(0xFF1D2B36),
                             borderRadius: UI.borderRadius8,
-                            color: AppColors.frameBgColor),
-                        child: Padding(
-                          padding: AppPadding.allPadding10,
-                          child: Image.asset(
-                            Images.parentVector,
+                            border: Border.all(
+                                color: Colors.white.withOpacity(0.1)),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                              value: _selectedMonth,
+                              icon: Padding(
+                                padding: const EdgeInsets.only(left: 4),
+                                child: Icon(Icons.keyboard_arrow_down,
+                                    color: Colors.white),
+                              ),
+                              dropdownColor: AppColors.frameBgColor,
+                              style: GoogleFonts.montserrat(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600),
+                              onChanged: (String? newValue) {
+                                setState(() {
+                                  _selectedMonth = newValue!;
+                                });
+                                // Filter pins by month
+                                if (newValue != null) {
+                                  final monthIndex = _months.indexOf(newValue);
+                                  final month = DateTime.now().year;
+                                  final filteredPins =
+                                      pinProvider.filterPinsByMonth(
+                                    userPins,
+                                    DateTime(month, monthIndex + 1),
+                                  );
+                                  // You can implement month filtering logic here
+                                }
+                              },
+                              items: _months.map<DropdownMenuItem<String>>(
+                                  (String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
+                            ),
                           ),
                         ),
                       ),
-                    )
+                    ),
+
+                    // Loading indicator
+                    if (isLoading)
+                      Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                        ),
+                      ),
+
+                    // Error message
+                    if (error != null)
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        margin: EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border:
+                              Border.all(color: Colors.red.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.error, color: Colors.red),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                error,
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                pinProvider.clearError();
+                                _loadUserPins();
+                              },
+                              child: Icon(Icons.refresh, color: Colors.red),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Empty state
+                    if (!isLoading && userPins.isEmpty && error == null)
+                      Container(
+                        padding: EdgeInsets.all(32),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.push_pin_outlined,
+                              size: 64,
+                              color: Colors.grey[600],
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No pins yet',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Create your first pin to get started!',
+                              style: TextStyle(
+                                color: Colors.grey[500],
+                                fontSize: 14,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => CreatePinScreen(),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFFF5BF4D),
+                                foregroundColor: Colors.black,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                              ),
+                              child: Text('Create Pin'),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Pins list
+                    if (!isLoading && userPins.isNotEmpty)
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: NeverScrollableScrollPhysics(),
+                        separatorBuilder: (context, index) {
+                          return SizedBox(height: 12);
+                        },
+                        itemCount: userPins.length,
+                        itemBuilder: (context, index) {
+                          final pin = userPins[index];
+                          // Convert Pin to PinItem for the widget
+                          final pinItem = PinItem(
+                            location: pin.location,
+                            flagEmoji: pin.flagEmoji,
+                            title: pin.title,
+                            emoji: pin.emoji,
+                            photoCount: pin.photoCount,
+                            audioCount: pin.audioCount,
+                            imageUrls: pin.imageUrls,
+                            viewsCount: pin.viewsCount,
+                            playsCount: pin.playsCount,
+                          );
+                          return PinCard(pin: pinItem);
+                        },
+                      ),
                   ],
                 ),
-
-                // Month Dropdown
-                Padding(
-                  padding: EdgeInsets.symmetric(vertical: 18),
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Color(0xFF1D2B36), // Same as card background
-                        borderRadius: UI.borderRadius8,
-                        border:
-                            Border.all(color: Colors.white.withOpacity(0.1)),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          value: _selectedMonth,
-                          icon: Padding(
-                            padding: const EdgeInsets.only(left: 4),
-                            child: Icon(Icons.keyboard_arrow_down,
-                                color: Colors.white),
-                          ),
-                          dropdownColor: AppColors.frameBgColor,
-                          style: GoogleFonts.montserrat(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600),
-                          onChanged: (String? newValue) {
-                            setState(() {
-                              _selectedMonth = newValue!;
-                            });
-                          },
-                          items: _months
-                              .map<DropdownMenuItem<String>>((String value) {
-                            return DropdownMenuItem<String>(
-                              value: value,
-                              child: Text(value),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: NeverScrollableScrollPhysics(),
-                  separatorBuilder: (context, index) {
-                    return SizedBox(
-                      height: 12,
-                    );
-                  },
-
-                  itemCount:
-                      _allPins.length, // Use the length of your dynamic data
-                  itemBuilder: (context, index) {
-                    final pin = _allPins[index]; // Get the current PinItem
-                    return PinCard(
-                        pin: pin); // Pass the dynamic data to your card widget
-                  },
-                ),
-
-                // Pushes navigation to the bottom
-                // --- Bottom Navigation Bar ---
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(vertical: 15),
         decoration: BoxDecoration(
-          color: Color(
-            0xFF1D1F24,
-          ), // Slightly darker for bottom nav
+          color: Color(0xFF1D1F24),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -231,7 +302,7 @@ class _MyPinsScreenState extends State<MyPinsScreen> {
             _buildBottomNavItem('My Pins', Images.myPinsImg, () {}),
             _buildCentralActionButton(() {
               print('Central Action Button tapped (Tapus/Main)');
-              // TODO: Navigate to Tapus Map Screen or main action
+              NavigationService.pushNamed('/tapu-pins');
             }),
             _buildBottomNavItem('New Pin', Images.newPinImg, () {
               Navigator.push(
@@ -246,7 +317,8 @@ class _MyPinsScreenState extends State<MyPinsScreen> {
       ),
     );
   }
-   Widget _buildBottomNavItem(
+
+  Widget _buildBottomNavItem(
     String label,
     String imageUrl,
     VoidCallback onPressed,

@@ -3,10 +3,15 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
+import 'package:memory_pins_app/presentation/Widgets/audio_recorder_section.dart';
 
 import 'package:memory_pins_app/presentation/Widgets/dialog_helper.dart';
 import 'package:memory_pins_app/services/location_picker.dart';
 import 'package:memory_pins_app/services/location_service.dart';
+import 'package:memory_pins_app/services/app_integration_service.dart';
+import 'package:memory_pins_app/providers/pin_provider.dart';
+import 'package:memory_pins_app/providers/user_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/models/pin.dart';
@@ -14,7 +19,6 @@ import 'package:memory_pins_app/models/pin.dart';
 // --- Import new packages ---
 import 'package:geolocator/geolocator.dart'; // For location
 import 'package:permission_handler/permission_handler.dart'; // For permissions
-import 'package:provider/provider.dart';
 import 'package:record/record.dart'; // For audio recording
 import 'package:audioplayers/audioplayers.dart'; // For audio playback
 import 'package:image_picker/image_picker.dart'; // For picking images
@@ -43,6 +47,10 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
   String _errorMessage = '';
   String? _imageUrl;
   String? eventId;
+
+  // App integration service
+  final AppIntegrationService _appService = AppIntegrationService();
+
   // Form controllers
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -83,6 +91,17 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
     Images.smileImg,
     Images.winklingImg,
   ];
+
+  // --- State Variables ---
+  String? _selectedMoodIconUrl;
+  List<File> _selectedImageFiles = []; // Changed to File for actual images
+  List<File> _recordedAudioFiles = []; // List to store recorded audio files
+  String? _recordedAudioFilePath; // Actual path to recorded audio file
+
+  // --- Location Variables ---
+  String _currentLocationAddress = 'Fetching location...';
+  double? _currentLatitude;
+  double? _currentLongitude;
 
   @override
   void initState() {
@@ -413,16 +432,6 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
   final TextEditingController _pinTitleController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
 
-  // --- State Variables ---
-  String? _selectedMoodIconUrl;
-  List<File> _selectedImageFiles = []; // Changed to File for actual images
-  String? _recordedAudioFilePath; // Actual path to recorded audio file
-
-  // --- Location Variables ---
-  String _currentLocationAddress = 'Fetching location...';
-  double? _currentLatitude;
-  double? _currentLongitude;
-
   // --- Audio Recording Functions ---
   Future<void> _startRecording() async {
     try {
@@ -561,6 +570,38 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
     }
   }
 
+  // --- Audio Recording Callback Methods ---
+  void _onAudioRecorded(String audioFilePath) {
+    print('=== AUDIO RECORDED CALLBACK ===');
+    print('Audio recorded: $audioFilePath');
+    print('File exists: ${File(audioFilePath).existsSync()}');
+    print('File size: ${File(audioFilePath).lengthSync()} bytes');
+
+    setState(() {
+      _recordedAudioFiles.add(File(audioFilePath));
+    });
+
+    print('Total recorded audio files: ${_recordedAudioFiles.length}');
+    for (int i = 0; i < _recordedAudioFiles.length; i++) {
+      print('Audio file $i: ${_recordedAudioFiles[i].path}');
+    }
+
+    _showSnackBar('Audio recorded successfully!');
+  }
+
+  void _onAudioDeleted() {
+    print('=== AUDIO DELETED CALLBACK ===');
+    print('Audio deleted');
+    setState(() {
+      // Remove the last recorded audio file
+      if (_recordedAudioFiles.isNotEmpty) {
+        _recordedAudioFiles.removeLast();
+      }
+    });
+    print('Remaining audio files: ${_recordedAudioFiles.length}');
+    _showSnackBar('Audio deleted');
+  }
+
   // --- Image Picking Functions ---
   Future<void> _addPhoto() async {
     try {
@@ -587,7 +628,7 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
   }
 
   // --- Post Pin Logic ---
-  void _postPin() {
+  Future<void> _postPin() async {
     final String title = _pinTitleController.text.trim();
     final String message = _messageController.text.trim();
 
@@ -599,7 +640,15 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
       _showSnackBar('Please select a Mood');
       return;
     }
-    if (_currentLatitude == null || _currentLongitude == null) {
+    // Use selected location if available, otherwise use current location
+    double? pinLatitude = _location.isNotEmpty
+        ? _location['latitude'] as double?
+        : _currentLatitude;
+    double? pinLongitude = _location.isNotEmpty
+        ? _location['longitude'] as double?
+        : _currentLongitude;
+
+    if (pinLatitude == null || pinLongitude == null) {
       _showSnackBar('Please wait for location to be fetched or try again.');
       return;
     }
@@ -607,32 +656,67 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
       _showSnackBar('Please add at least one photo.');
       return;
     }
-    // You can add more validation for audio if it's mandatory
 
-    final newPin = Pin(
-      playsCount: 0,
-      location: _currentLocationAddress,
-      flagEmoji: '🇺🇸',
-      emoji: _selectedMoodIconUrl,
-      photoCount: _selectedImageFiles.length,
-      audioCount: _recordedAudioPath != null ? 1 : 0,
-      imageUrls: _selectedImageFiles.map((file) => file.path).toList(),
-      viewsCount: 0,
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      latitude: _currentLatitude!,
-      longitude: _currentLongitude!,
-      imageUrl: _selectedImageFiles
-          .first.path, // Use the path of the first selected image
-      moodIconUrl: _selectedMoodIconUrl!,
-      title: title,
-      // You might extend Pin model to include message, all image paths, audio path
-      // e.g., 'allImagePaths': _selectedImageFiles.map((f) => f.path).toList(),
-      // 'audioPath': _recordedAudioFilePath,
-      // 'message': message,
-    );
+    setState(() {
+      _isLoading = true;
+    });
 
-    Navigator.pop(context, newPin);
-    _showSnackBar('Pin Posted: ${newPin.title}');
+    try {
+      // Prepare audio files list
+      List<File> audioFiles = [];
+      // Add recorded audio files from AudioRecorderSection
+      audioFiles.addAll(_recordedAudioFiles);
+      // Add legacy recorded audio file if exists
+      if (_recordedAudioPath != null) {
+        audioFiles.add(File(_recordedAudioPath!));
+      }
+
+      print('=== POST PIN DEBUG ===');
+      print('Creating pin with ${audioFiles.length} audio files');
+      print('_recordedAudioFiles count: ${_recordedAudioFiles.length}');
+      print('_recordedAudioPath: $_recordedAudioPath');
+
+      for (int i = 0; i < audioFiles.length; i++) {
+        final file = audioFiles[i];
+        print('Audio file $i: ${file.path}');
+        print('  - Exists: ${file.existsSync()}');
+        print(
+            '  - Size: ${file.existsSync() ? file.lengthSync() : 'N/A'} bytes');
+      }
+
+      // Create pin with media uploads using integration service
+      final success = await _appService.createPinWithMedia(
+        context: context,
+        title: title,
+        description: message,
+        mood: _selectedMoodIconUrl!,
+        imageFiles: _selectedImageFiles,
+        audioFiles: audioFiles,
+        latitude: pinLatitude,
+        longitude: pinLongitude,
+      );
+
+      if (success) {
+        _showSnackBar('Pin created successfully!');
+
+        // Refresh the home screen data before navigating back
+        final pinProvider = Provider.of<PinProvider>(context, listen: false);
+        await pinProvider.loadNearbyPins();
+        await pinProvider.loadUserPins();
+
+        // Navigate back to home screen
+        Navigator.pop(context);
+      } else {
+        _showSnackBar('Failed to create pin. Please try again.');
+      }
+    } catch (e) {
+      print('Error creating pin: $e');
+      _showSnackBar('Error creating pin: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   String _formatDuration(Duration duration) {
@@ -670,27 +754,39 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
                           fontWeight: FontWeight.w700,
                           fontSize: 18),
                     ),
-                    Container(
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          color: Color(0xFFF5BF4D),
-                          border:
-                              Border.all(width: 0.5, color: Color(0xFFB37FEB)),
-                          boxShadow: [
-                            BoxShadow(
-                                blurRadius: 16,
-                                color: Color(0xFF9254DE).withOpacity(0.32))
-                          ]),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 10, horizontal: 14),
-                        child: Text(
-                          'Drop Pin',
-                          style: GoogleFonts.nunitoSans(
-                            color: Colors.black,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
+                    GestureDetector(
+                      onTap: _isLoading ? null : _postPin,
+                      child: Container(
+                        decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            color: _isLoading ? Colors.grey : Color(0xFFF5BF4D),
+                            border: Border.all(
+                                width: 0.5, color: Color(0xFFB37FEB)),
+                            boxShadow: [
+                              BoxShadow(
+                                  blurRadius: 16,
+                                  color: Color(0xFF9254DE).withOpacity(0.32))
+                            ]),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 14),
+                          child: _isLoading
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.black,
+                                  ),
+                                )
+                              : Text(
+                                  'Drop Pin',
+                                  style: GoogleFonts.nunitoSans(
+                                    color: Colors.black,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                         ),
                       ),
                     )
@@ -795,17 +891,34 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
                 _buildTextField(_pinTitleController, 'Enter pin title'),
                 const SizedBox(height: 20),
 
-                // --- Record Voice Section (Updated to match Figma) ---
+                // --- Record Voice Section (Using AudioRecorderSection widget) ---
                 _buildSectionHeader('Record Voice', Images.recordvoice),
                 const SizedBox(height: 10),
-                Column(
-                  children: [
-                    if (_recordedAudioPath != null) ...[
-                      _buildSavedAudioPlaybackSection(),
-                      const SizedBox(height: 20),
+                // Show all recorded audios above the recorder
+                if (_recordedAudioFiles.isNotEmpty)
+                  Column(
+                    children: [
+                      ..._recordedAudioFiles.asMap().entries.map((entry) {
+                        int idx = entry.key;
+                        File audioFile = entry.value;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: RecordedAudioListItem(
+                            audioFile: audioFile,
+                            onDelete: () {
+                              setState(() {
+                                _recordedAudioFiles.removeAt(idx);
+                              });
+                            },
+                          ),
+                        );
+                      }),
                     ],
-                    _buildActiveSessionControls(),
-                  ],
+                  ),
+                AudioRecorderSection(
+                  onAudioRecorded: _onAudioRecorded,
+                  onAudioDeleted: _onAudioDeleted,
+                   // Don't show duplicate UI
                 ),
                 const SizedBox(height: 20),
 
@@ -902,11 +1015,13 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
   }
 
   // --- Helper Widgets (mostly unchanged) ---
-  Widget _buildSectionHeader(String title, String assestPath ) {
+  Widget _buildSectionHeader(String title, String assestPath) {
     return Row(
       children: [
-        Image.asset(assestPath,height: 24,),
-        
+        Image.asset(
+          assestPath,
+          height: 24,
+        ),
         const SizedBox(width: 10),
         Text(
           title,
@@ -926,7 +1041,6 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
     int maxLines = 1,
   }) {
     return TextField(
-      
       controller: controller,
       maxLines: maxLines,
       style: const TextStyle(color: Colors.white),

@@ -6,6 +6,9 @@ import 'package:memory_pins_app/presentation/Pages/onboarding3.dart';
 import 'package:memory_pins_app/presentation/Widgets/sign_in_button.dart';
 import 'package:memory_pins_app/services/auth_service.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
+import 'package:memory_pins_app/services/app_integration_service.dart';
+import 'package:memory_pins_app/providers/user_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -18,6 +21,7 @@ class SignUpPage extends StatefulWidget {
 class _SignUpPageState extends State<SignUpPage> {
   bool _isLoading = false;
   final AuthService _authService = AuthService();
+  final AppIntegrationService _appService = AppIntegrationService();
 
   void _handleSignUp() async {
     if (_formKey.currentState?.validate() ?? false) {
@@ -27,29 +31,33 @@ class _SignUpPageState extends State<SignUpPage> {
       print("Form is valid");
 
       try {
-        final user = await _authService.signUp(
+        final success = await _appService.signUpUser(
+          context,
           _emailController.text.trim(),
           _passwordController.text.trim(),
           name: _nameController.text.trim(),
         );
         print("Trying to sign up with: ${_emailController.text.trim()}");
-        print("Password: ${_passwordController.text.trim()}");
 
         if (!mounted) return;
         setState(() {
           _isLoading = false;
         });
 
-        if (user != null) {
-          print("User signed up: ${user.email}");
+        if (success) {
+          print("User signed up successfully");
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => HomeScreen()),
           );
         } else {
+          final userProvider =
+              Provider.of<UserProvider>(context, listen: false);
+          final errorMessage =
+              userProvider.error ?? "Sign-up failed. Please try again.";
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Sign-up failed. Please try again."),
+            SnackBar(
+              content: Text(errorMessage),
               backgroundColor: Colors.red,
             ),
           );
@@ -66,6 +74,90 @@ class _SignUpPageState extends State<SignUpPage> {
           ),
         );
       }
+    }
+  }
+
+  void _handleAppleSignUp() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final success = await userProvider.signInWithApple();
+
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (success) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomeScreen()),
+        );
+      } else {
+        final errorMessage = userProvider.error ?? 'Apple sign up failed';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('An error occurred: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _handleAnonymousSignUp() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final success = await userProvider.signInAnonymously();
+
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (success) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomeScreen()),
+        );
+      } else {
+        final errorMessage = userProvider.error ?? 'Anonymous sign up failed';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('An error occurred: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -162,7 +254,6 @@ class _SignUpPageState extends State<SignUpPage> {
                     labelStyle: const TextStyle(color: Colors.white),
                     hintText: 'Enter your Name...',
                     hintStyle: TextStyle(color: Color(0xFF919EAA)),
-
                     enabledBorder: OutlineInputBorder(
                       borderSide: const BorderSide(color: Color(0xFF3C495C)),
                       borderRadius: BorderRadius.circular(12),
@@ -201,7 +292,6 @@ class _SignUpPageState extends State<SignUpPage> {
                     labelStyle: const TextStyle(color: Colors.white),
                     hintText: 'Enter your email...',
                     hintStyle: TextStyle(color: Color(0xFF919EAA)),
-
                     enabledBorder: OutlineInputBorder(
                       borderSide: const BorderSide(color: Color(0xFF3C495C)),
                       borderRadius: BorderRadius.circular(12),
@@ -241,7 +331,6 @@ class _SignUpPageState extends State<SignUpPage> {
                     labelStyle: const TextStyle(color: Colors.white),
                     hintText: 'Enter your Password',
                     hintStyle: TextStyle(color: Color(0xFF919EAA)),
-
                     suffixIcon: IconButton(
                       icon: Icon(
                         isPasswordVisible
@@ -293,7 +382,6 @@ class _SignUpPageState extends State<SignUpPage> {
                     labelStyle: const TextStyle(color: Colors.white),
                     hintText: 'Re-Enter your Password',
                     hintStyle: TextStyle(color: Color(0xFF919EAA)),
-
                     suffixIcon: IconButton(
                       icon: Icon(
                         isPasswordVisible
@@ -348,48 +436,30 @@ class _SignUpPageState extends State<SignUpPage> {
 
               _isLoading
                   ? Center(
-                    child: CircularProgressIndicator(color: Colors.white),
-                  )
+                      child: CircularProgressIndicator(color: Colors.white),
+                    )
                   : Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: GestureDetector(
-                      onTap: () {
-                        _authService.signInWithApple();
-                      },
-                      child: SignInButton(
-                        iconFirst: true,
-                        icon: Icons.apple_sharp,
-                        text: "Sign up with Apple",
-                        isWhiteBackground: true,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: GestureDetector(
+                        onTap: () {
+                          _handleAppleSignUp();
+                        },
+                        child: SignInButton(
+                          iconFirst: true,
+                          icon: Icons.apple_sharp,
+                          text: "Sign up with Apple",
+                          isWhiteBackground: true,
+                        ),
                       ),
                     ),
-                  ),
 
               SizedBox(height: 12),
 
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: GestureDetector(
-                  onTap: () async {
-                    setState(() {
-                      _isLoading = true;
-                    });
-                    try {
-                      await _authService.signInAnonymously(context);
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text("An error occurred: $e"),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    } finally {
-                      if (mounted) {
-                        setState(() {
-                          _isLoading = false;
-                        });
-                      }
-                    }
+                  onTap: () {
+                    _handleAnonymousSignUp();
                   },
                   child: SignInButton(
                     icon: Icons.arrow_forward_sharp,
@@ -405,16 +475,14 @@ class _SignUpPageState extends State<SignUpPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    "Don’t have an account?",
+                    "Don't have an account?",
                     style: GoogleFonts.nunitoSans(
                       fontWeight: FontWeight.w500,
                       fontSize: 16,
                       color: Colors.white,
                     ),
                   ),
-
                   SizedBox(width: 4),
-
                   GestureDetector(
                     onTap: () {
                       NavigationService.pushNamed('/login');

@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:memory_pins_app/models/pin.dart';
+import 'package:memory_pins_app/models/pin_detail.dart';
 import 'package:memory_pins_app/presentation/Pages/create_pin_screen.dart';
 import 'package:memory_pins_app/presentation/Pages/map_view_screen.dart';
 import 'package:memory_pins_app/presentation/Pages/my_pins_screen.dart';
-import 'package:memory_pins_app/presentation/Widgets/map_pin_widget.dart'; // Make sure this import is correct
+import 'package:memory_pins_app/presentation/Pages/pin_detail_screen.dart';
+// Correct Google Maps widget with custom UI
+import 'package:memory_pins_app/presentation/Widgets/map_pin_widget.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
+import 'package:memory_pins_app/services/app_integration_service.dart';
+import 'package:memory_pins_app/providers/pin_provider.dart';
+import 'package:memory_pins_app/providers/user_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/label_text_style.dart';
 import 'package:memory_pins_app/utills/Constants/ui.dart'; // Your custom image paths
+import 'package:geolocator/geolocator.dart';
+import 'package:memory_pins_app/services/location_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,411 +28,635 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final List<Pin> _dummyPins = [
-    Pin(
-      playsCount: 10,
-      location: 'New Jersey',
-      flagEmoji: '🇺🇸',
-      emoji: Images.smileImg,
-      photoCount: 10,
-      audioCount: 2,
-      imageUrls: [Images.umbrellaImg,Images.childUmbrella,Images.manWithRiver,Images.umbrellaImg],
-      viewsCount: 100,
-      id: '1',
-      latitude: 100, // Dummy position for screenshot
-      longitude: 190, // Dummy position for screenshot
-      imageUrl: Images.forestImg, // Now points to a network URL
-      moodIconUrl: Images.confusionImg, // Now points to a network URL
-      title: 'Serene Lake',
-    ),
-    Pin(
-      playsCount: 10,
-      location: 'New Jersey',
-      flagEmoji: '🇺🇸',
-      emoji: Images.smileImg,
-      photoCount: 10,
-      audioCount: 2,
-      imageUrls: [Images.umbrellaImg,Images.childUmbrella,Images.manWithRiver,Images.umbrellaImg],
-      viewsCount: 100,
-      id: '2',
-      latitude: 250,
-      longitude: 280,
-      imageUrl: Images.rainThunder,
-      moodIconUrl: Images.dancingImg,
-      title: 'Stormy Sea',
-    ),
-    Pin(
-      playsCount: 10,
-      location: 'New Jersey',
-      flagEmoji: '🇺🇸',
-      emoji: Images.smileImg,
-      photoCount: 10,
-      audioCount: 2,
-      imageUrls: [Images.umbrellaImg,Images.childUmbrella,Images.manWithRiver,Images.umbrellaImg],
-      viewsCount: 100,
-      id: '3',
-      latitude: 120,
-      longitude: 400,
-      imageUrl: Images.riverImg,
-      moodIconUrl: Images.confusionImg,
-      title: 'Forest Path',
-    ),
-    Pin(
-      playsCount: 10,
-      location: 'New Jersey',
-      flagEmoji: '🇺🇸',
-      emoji: Images.smileImg,
-      photoCount: 10,
-      audioCount: 2,
-      imageUrls:[Images.umbrellaImg,Images.childUmbrella,Images.manWithRiver,Images.umbrellaImg],
-      viewsCount: 100,
-      id: '4',
-      latitude: 380,
-      longitude: 180,
-      imageUrl: Images.forestImg,
-      moodIconUrl: Images.smileImg,
-      title: 'Green Hills',
-    ),
-    Pin(
-      playsCount: 10,
-      location: 'New Jersey',
-      flagEmoji: '🇺🇸',
-      emoji: Images.smileImg,
-      photoCount: 10,
-      audioCount: 2,
-      imageUrls: [Images.umbrellaImg,Images.childUmbrella,Images.manWithRiver,Images.umbrellaImg],
-      viewsCount: 100,
-      id: '5',
-      latitude: 300,
-      longitude: 400,
-      imageUrl: Images.riverImg,
-      moodIconUrl: Images.dancingImg,
-      title: 'Misty Mountains',
-    ),
-  ];
+  String _selectedFilter = 'Nearby';
+  final AppIntegrationService _appService = AppIntegrationService();
+  final GlobalKey<HomeMapWidgetState> _mapKey = GlobalKey<HomeMapWidgetState>();
+  String _currentCity = 'Loading...'; // Add current city state
+  final LocationService _locationService =
+      LocationService(); // Add location service
+  Pin? _selectedPin;
+  final DraggableScrollableController _bottomSheetController =
+      DraggableScrollableController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Load pins when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadPins();
+      _getCurrentCity(); // Get current city
+    });
+  }
+
+  void _loadPins() {
+    final pinProvider = Provider.of<PinProvider>(context, listen: false);
+    pinProvider.initialize(); // This will load all pin data
+  }
+
+  // Get current city based on user's location
+  Future<void> _getCurrentCity() async {
+    try {
+      final position = await _locationService.getCurrentLocation();
+      if (position != null) {
+        final city = await _getCityFromCoordinates(
+            position.latitude, position.longitude);
+        setState(() {
+          _currentCity = city;
+        });
+      }
+    } catch (e) {
+      print('Error getting current city: $e');
+      setState(() {
+        _currentCity = 'Location unavailable';
+      });
+    }
+  }
+
+  // Get city name from coordinates using reverse geocoding
+  Future<String> _getCityFromCoordinates(
+      double latitude, double longitude) async {
+    try {
+      final locationData =
+          await _locationService.reverseGeocode(latitude, longitude);
+
+      if (locationData != null && locationData['address'] != null) {
+        final address = locationData['address'] as Map<String, dynamic>;
+        // Return city name from the address data
+        return address['city'] ??
+            address['town'] ??
+            address['state'] ??
+            'Unknown City';
+      }
+    } catch (e) {
+      print('Error in reverse geocoding: $e');
+    }
+    return 'Unknown City';
+  }
+
+  void _showPinDetails(Pin pin) {
+    setState(() {
+      _selectedPin = pin;
+    });
+    // Safely animate the bottom sheet to show pin details
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_bottomSheetController.isAttached) {
+        _bottomSheetController.animateTo(
+          0.5, // Show 50% of the screen to display pin details
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+  }
+
+  void _hidePinDetails() {
+    if (_bottomSheetController.isAttached) {
+      _bottomSheetController
+          .animateTo(
+        0.18, // Return to normal size (filters only)
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInCubic,
+      )
+          .then((_) {
+        setState(() {
+          _selectedPin = null;
+        });
+      });
+    } else {
+      // If controller is not attached, just clear the selection
+      setState(() {
+        _selectedPin = null;
+      });
+    }
+  }
+
+  // Convert Pin data to PinDetail data for the detail screen
+  PinDetail _convertPinToPinDetail(Pin pin) {
+    print('Converting pin: ${pin.title}');
+    print('Pin has description: ${pin.description}');
+    print('Pin has ${pin.audioUrls.length} audio URLs');
+
+    // Convert image URLs to PhotoItem list
+    List<PhotoItem> photos =
+        pin.imageUrls.map((url) => PhotoItem(imageUrl: url)).toList();
+
+    // Convert audio URLs to AudioItem list
+    List<AudioItem> audios = [];
+    for (int i = 0; i < pin.audioUrls.length; i++) {
+      audios.add(AudioItem(
+        audioUrl: pin.audioUrls[i],
+        duration:
+            '${(i + 1) * 2}:${(i + 1) * 10}', // Will be updated with actual duration
+      ));
+    }
+
+    // Use the actual description from the pin, with fallback for null/empty
+    String description = (pin.description?.isNotEmpty == true)
+        ? pin.description!
+        : 'A beautiful memory captured at ${pin.location}. This pin contains ${pin.photoCount} photos and ${pin.audioCount} audio recordings.';
+
+    print('Final description: $description');
+    print('Created ${audios.length} audio items');
+
+    return PinDetail(
+      title: pin.title,
+      description: description,
+      audios: audios,
+      photos: photos,
+    );
+  }
+
+  // Navigate to pin detail screen
+  void _navigateToPinDetail(Pin pin) {
+    print('Navigating to pin detail for: ${pin.title}');
+    print('Pin description: ${pin.description}');
+
+    final pinDetail = _convertPinToPinDetail(pin);
+    print('Converted pin detail title: ${pinDetail.title}');
+    print('Converted pin detail description: ${pinDetail.description}');
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PinDetailScreen(pinDetail: pinDetail),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100], // A light background for the map
-      body: Stack(
-        children: [
-          // --- Map Background Placeholder ---
-          Positioned.fill(
-            child: Image.network(
-              Images.homeScreenBgImg, // Your network map background image URL
-              fit: BoxFit.cover,
-              repeat: ImageRepeat.repeat, // If your image is tileable
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Center(
-                  child: CircularProgressIndicator(
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded /
-                            loadingProgress.expectedTotalBytes!
-                        : null,
-                  ),
-                );
-              },
-              errorBuilder: (context, error, stackTrace) => const Center(
-                child: Icon(
-                  Icons.broken_image,
-                  size: 50,
-                  color: Colors.grey,
+      bottomNavigationBar: _buildCustomBottomNavBar(context),
+      body: Consumer2<PinProvider, UserProvider>(
+        builder: (context, pinProvider, userProvider, child) {
+          final pins = pinProvider.filteredPins;
+          final isLoading = pinProvider.isLoading;
+          final currentUser = userProvider.currentUser;
+
+          return Stack(
+            children: [
+              // --- Google Maps Background ---
+              Positioned.fill(
+                child: HomeMapWidget(
+                  key: _mapKey,
+                  pins: pins,
+                  onPinTap: (selectedPin) {
+                    print('Tapped on pin: ${selectedPin.title}');
+                    _showPinDetails(selectedPin);
+                  },
+                  isLoading: isLoading,
+                  getPinDistance: (pin) {
+                    final pinProvider =
+                        Provider.of<PinProvider>(context, listen: false);
+                    return pinProvider.getPinDistance(pin);
+                  },
                 ),
               ),
-            ),
-          ),
 
-          // --- Dummy Pins on Map (positioned manually for now) ---
-          ..._dummyPins.map(
-            (pin) => MapPinWidget(
-              pin:
-                  pin, // MapPinWidget now correctly uses Image.network internally
-              onTap: (selectedPin) {
-                print('Tapped on pin: ${selectedPin.title}');
-                _showPinDetailsBottomSheet(context, selectedPin);
-              },
-            ),
-          ),
+              // --- Loading Overlay ---
+              if (isLoading)
+                Container(
+                  color: Colors.black.withOpacity(0.3),
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
 
-          // --- Top Bar (Custom AppBar) ---
-          Positioned(
-            top: 60, // Adjust for status bar padding
-            left: 0,
-            right: 0,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 10,
-                      ),
+              // --- Map controls and overlays will be added here ---
+
+              // --- Map Control Buttons ---
+              Positioned(
+                top: 200, // Position below location selector
+                right: 16,
+                child: Column(
+                  children: [
+                    // Zoom In Button
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
-                        color: Colors.grey[700]?.withOpacity(0.8),
-                        borderRadius: BorderRadius.circular(30),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      child: const Text(
-                        'Pins',
-                        textAlign: TextAlign.center,
+                      child: IconButton(
+                        icon: const Icon(Icons.add, color: Colors.black87),
+                        onPressed: () {
+                          _mapKey.currentState?.zoomIn();
+                        },
+                        iconSize: 20,
+                        padding: const EdgeInsets.all(8),
+                      ),
+                    ),
+                    // Zoom Out Button
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.remove, color: Colors.black87),
+                        onPressed: () {
+                          _mapKey.currentState?.zoomOut();
+                        },
+                        iconSize: 20,
+                        padding: const EdgeInsets.all(8),
+                      ),
+                    ),
+                    // Location Button
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.my_location,
+                            color: Colors.black87),
+                        onPressed: () {
+                          _mapKey.currentState?.centerOnUserLocation();
+                        },
+                        iconSize: 20,
+                        padding: const EdgeInsets.all(8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // --- Top Bar (Custom AppBar) ---
+              Positioned(
+                top: 60, // Adjust for status bar padding
+                left: 0,
+                right: 0,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[700]?.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: const Text(
+                            'Pins',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      GestureDetector(
+                        onTap: () {
+                          NavigationService.pushNamed('/profile');
+                        },
+                        child: CircleAvatar(
+                          radius: 20,
+                          backgroundImage: currentUser?.photoURL != null
+                              ? NetworkImage(currentUser!.photoURL!)
+                              : NetworkImage(Images.profileImg),
+                          onBackgroundImageError: (exception, stackTrace) {
+                            print('Error loading profile image: $exception');
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // --- Location Selector (New Jersey) ---
+              Positioned(
+                top: 130, // Position relative to top bar
+                left: 16,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Color(0xFFEDDCFF),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.black.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.network(Images.earthImg, height: 20),
+                      const SizedBox(width: 6),
+                      Text(
+                        _currentCity,
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // --- Floating Action Buttons (Positioned just above bottom sheet) ---
+              AnimatedBuilder(
+                animation: _bottomSheetController,
+                builder: (context, child) {
+                  if (!_bottomSheetController.isAttached) {
+                    return SizedBox
+                        .shrink(); // Return empty widget if not attached
+                  }
+
+                  final sheetHeight = _bottomSheetController.size;
+                  final screenHeight = MediaQuery.of(context).size.height;
+                  final bottomPosition =
+                      screenHeight * sheetHeight + 10; // 10px above the sheet
+
+                  return Positioned(
+                    bottom: bottomPosition,
+                    left: 16,
+                    child: FloatingActionButton(
+                      shape: CircleBorder(),
+                      heroTag: 'mood_fab',
+                      onPressed: () {
+                        print('Smiley/Mood FAB tapped');
+                        // TODO: Navigate to mood/tapu creation
+                      },
+                      backgroundColor: Color(0xFF531DAB),
+                      child: Image.network(
+                        Images.smileImg,
+                        width: 30,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(
+                          Icons.sentiment_dissatisfied,
+                          color: Colors.red,
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  GestureDetector(
-                    onTap: () {
-                      NavigationService.pushNamed('/profile');
-                    },
-                    child: CircleAvatar(
-                      radius: 20,
-                      backgroundImage: NetworkImage(
-                        Images.profileImg,
-                      ), // Your network profile pic URL
-                      onBackgroundImageError: (exception, stackTrace) {
-                        print('Error loading profile image: $exception');
-                        // Fallback to an icon if image fails to load
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // --- Location Selector (New Jersey) ---
-          Positioned(
-            top: 130, // Position relative to top bar
-            left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Color(0xFFEDDCFF),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.black.withOpacity(0.2)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.network(Images.earthImg, height: 20),
-                  const SizedBox(width: 6),
-                  Text(
-                    'New Jersey',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Icon(Icons.arrow_drop_down, color: Colors.black, size: 18),
-                ],
-              ),
-            ),
-          ),
-
-          // --- Floating Action Buttons ---
-          Positioned(
-            bottom: 190, // Adjust position based on bottom sheet height
-            left: 16,
-            child: FloatingActionButton(
-              shape: CircleBorder(),
-              heroTag: 'mood_fab', // Unique tag for multiple FABs
-              onPressed: () {
-                print('Smiley/Mood FAB tapped');
-              },
-              backgroundColor: Color(0xFF531DAB),
-              child: Image.network(
-                Images.smileImg,
-                width: 30,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
                   );
                 },
-                errorBuilder: (context, error, stackTrace) => const Icon(
-                  Icons.sentiment_dissatisfied,
-                  color: Colors.red,
-                ), // Fallback
               ),
-            ),
-          ),
-          Positioned(
-            bottom: 190, // Adjust position
-            right: 16,
-            child: FloatingActionButton(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(40),
+              AnimatedBuilder(
+                animation: _bottomSheetController,
+                builder: (context, child) {
+                  if (!_bottomSheetController.isAttached) {
+                    return SizedBox
+                        .shrink(); // Return empty widget if not attached
+                  }
+
+                  final sheetHeight = _bottomSheetController.size;
+                  final screenHeight = MediaQuery.of(context).size.height;
+                  final bottomPosition =
+                      screenHeight * sheetHeight + 10; // 10px above the sheet
+
+                  return Positioned(
+                    bottom: bottomPosition,
+                    right: 16,
+                    child: FloatingActionButton(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(40),
+                      ),
+                      heroTag: 'stack_fab',
+                      onPressed: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => MapViewScreen()));
+                      },
+                      backgroundColor: Color(0xFFF5BF4D),
+                      child: Image.network(Images.layersImg),
+                    ),
+                  );
+                },
               ),
-              heroTag: 'stack_fab', // Unique tag
-              onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => MapViewScreen()));
 
-                // TODO: Navigate to Saved Pins Screen
-              },
-              backgroundColor: Color(0xFFF5BF4D),
-              child: Image.network(Images.layersImg),
-            ),
-          ),
+              // --- Bottom UI Container (Sheet & Navigation) ---
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: DraggableScrollableSheet(
+                  controller: _bottomSheetController,
+                  initialChildSize:
+                      0.18, // Reduced to make space for bottom nav
+                  minChildSize: 0.18, // Minimum size to show filters
+                  maxChildSize: 0.65, // Reduced max size to prevent overflow
+                  builder: (context, scrollController) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Color(0xFF15212F),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(30),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          // Drag handle
+                          const SizedBox(height: 10),
+                          Container(
+                            width: 48,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: Color(0xFFD4D4D4),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
 
-          // --- Bottom UI Container (Sheet & Navigation) ---
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              height: 170, // Height of the bottom container
-              decoration: BoxDecoration(
-                color: Color(0xFF15212F),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(30),
+                          // --- Filter Buttons (Always Visible) ---
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedFilter = 'Nearby';
+                                    });
+                                    pinProvider.setFilterType('nearby');
+                                    _mapKey.currentState?.refreshPins();
+                                  },
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: _selectedFilter == 'Nearby'
+                                          ? Color(0xFFF5BF4D)
+                                          : Color(0xFFFFECC3),
+                                      borderRadius: BorderRadius.circular(57),
+                                      border: Border.all(
+                                          width: 1, color: Colors.white),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 16,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Image.network(Images.mapMarketImg,
+                                              height: 16),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            "Nearby",
+                                            style: GoogleFonts.nunitoSans(
+                                              color: Colors.black,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 24),
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedFilter = 'More than 5 KM';
+                                    });
+                                    pinProvider.setFilterType('far');
+                                    _mapKey.currentState?.refreshPins();
+                                  },
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: _selectedFilter == 'More than 5 KM'
+                                          ? Color(0xFFF5BF4D)
+                                          : Color(0xFFFFECC3),
+                                      borderRadius: BorderRadius.circular(57),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 16,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Image.network(Images.mapMarketImg,
+                                              height: 16),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            "More than 5 KM",
+                                            style: GoogleFonts.nunitoSans(
+                                              color: Colors.black,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          SizedBox(height: 24),
+
+                          // --- Pin Details Content (Scrollable) ---
+                          if (_selectedPin != null) ...[
+                            const SizedBox(height: 16),
+                            // Pin details content
+                            Expanded(
+                              child: SingleChildScrollView(
+                                controller: scrollController,
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                                child: _PinDetailsContent(
+                                  pin: _selectedPin!,
+                                  // onSave: () {
+                                  //   final pinProvider =
+                                  //       Provider.of<PinProvider>(context,
+                                  //           listen: false);
+                                  //   pinProvider.savePin(_selectedPin!.id);
+                                  //   _hidePinDetails();
+                                  // },
+                                  // onShare: () {
+                                  //   _hidePinDetails();
+                                  // },
+                                  onSend: () =>
+                                      _navigateToPinDetail(_selectedPin!),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
-              child: Column(
-                children: [
-                  const SizedBox(height: 10),
-                  Container(
-                    width: 48,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Color(0xFFD4D4D4),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // --- Filter Buttons ---
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Color(0xFFF5BF4D),
-                            borderRadius: BorderRadius.circular(57),
-                            border: Border.all(width: 1, color: Colors.white),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 16,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Image.network(Images.mapMarketImg, height: 16),
-                                SizedBox(width: 8),
-                                Text(
-                                  "Nearby",
-                                  style: GoogleFonts.nunitoSans(
-                                    color: Colors.black,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        SizedBox(width: 24),
-
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Color(0xFFFFECC3),
-                            borderRadius: BorderRadius.circular(57),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 16,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Image.network(Images.mapMarketImg, height: 16),
-                                SizedBox(width: 8),
-                                Text(
-                                  "More than 5 KM",
-                                  style: GoogleFonts.nunitoSans(
-                                    color: Colors.black,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        // _buildFilterButton('Nearby', Icons.location_on, () {
-                        //   print('Nearby filter tapped');
-                        // }),
-                        // _buildFilterButton(
-                        //     'More than 5KM', Icons.map_outlined, () {
-                        //   print('More than 5KM filter tapped');
-                        // }),
-                      ],
-                    ),
-                  ),
-                  const Spacer(), // Pushes navigation to the bottom
-                  // --- Bottom Navigation Bar ---
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    decoration: BoxDecoration(
-                      color: Color(
-                        0xFF1D1F24,
-                      ), // Slightly darker for bottom nav
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildBottomNavItem('My Pins', Images.myPinsImg, () {
-                          NavigationService.pushNamed('/my-pins');
-                        }),
-                        _buildCentralActionButton(() {
-                          print('Central Action Button tapped (Tapus/Main)');
-                          // TODO: Navigate to Tapus Map Screen or main action
-                        }),
-                        _buildBottomNavItem('New Pin', Images.newPinImg, () {
-                          NavigationService.pushNamed('/create-pin');
-                        }),
-                      ],
-                    ),
-                  ),
-                  // Padding for iPhone home indicator
-                ],
-              ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
 
-  // Helper function for building filter buttons
-  // Widget _buildFilterButton(
-  //     String text, IconData icon, VoidCallback onPressed) {
-  //   return ElevatedButton.icon(
-  //     onPressed: onPressed,
-  //     icon: Icon(icon, color: Colors.black87),
-  //     label: Text(text, style: const TextStyle(color: Colors.black)),
-  //     style: ElevatedButton.styleFrom(
-  //       backgroundColor: Color(0xFFF5BF4D), // Yellow background
-  //       shape: RoundedRectangleBorder(
-  //         borderRadius: BorderRadius.circular(57),
-  //       ),
-  //       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-  //       elevation: 0,
-  //     ),
-  //   );
-  // }
+  Widget _buildCustomBottomNavBar(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.only(
+        top: 15,
+        bottom: MediaQuery.of(context).padding.bottom + 15,
+      ),
+      decoration: BoxDecoration(
+        color: Color(0xFF1D1F24),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildBottomNavItem('My Pins', Images.myPinsImg, () {
+            NavigationService.pushNamed('/my-pins');
+          }),
+          _buildCentralActionButton(() {
+            print('Central Action Button tapped (Tapus/Main)');
+            NavigationService.pushNamed('/tapu-pins');
+          }),
+          _buildBottomNavItem('New Pin', Images.newPinImg, () {
+            NavigationService.pushNamed('/create-pin');
+          }),
+        ],
+      ),
+    );
+  }
 
   // Helper function for building bottom navigation items
   Widget _buildBottomNavItem(
@@ -465,442 +698,251 @@ class _HomeScreenState extends State<HomeScreen> {
         shape: CircleBorder(),
         heroTag: 'central_nav_fab',
         onPressed: onPressed,
-        backgroundColor: Color(0xFFEBA145), // Yellow like the filter buttons
+        backgroundColor: Color(0xFFEBA145),
+        elevation: 5, // Yellow like the filter buttons
         child: Icon(Icons.map, color: Colors.white, size: 24), // Tapus icon
-        elevation: 5, // Lift it above the bottom nav
+        // Lift it above the bottom nav
       ),
     );
   }
+}
 
-  void _showPinDetailsBottomSheet(BuildContext context, Pin pin) {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: Color(0xFF15212F),
-    isScrollControlled: true,
-    builder: (context) {
-      final width = MediaQuery.of(context).size.width;
+class _PinDetailsContent extends StatelessWidget {
+  final Pin pin;
+  
+  
+  final VoidCallback onSend;
 
-      return DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        minChildSize: 0.4,
-        maxChildSize: 0.9,
-        expand: false,
-        builder: (context, scrollController) {
-          return Container(
-            decoration: BoxDecoration(
-              color: Color(0xFF15212F),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              border: Border.all(width: 1, color: Colors.white.withOpacity(0.2)),
-            ),
-            child: SingleChildScrollView(
-              controller: scrollController,
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Drag handle
-                  Center(
-                    child: Container(
-                      width: 60,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 15),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-            
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.frameBgColor,
-                      borderRadius: UI.borderRadius16,
-                      border: Border.all(width: 1, color: Colors.white.withOpacity(0.2)),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        children: [
-                          Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  const _PinDetailsContent({
+    required this.pin,
+    
+    
+    required this.onSend,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pinProvider = Provider.of<PinProvider>(context, listen: false);
+    final distanceText = pinProvider.getPinDistance(pin);
+    final width = MediaQuery.of(context).size.width;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Pin Details Card
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(width: 1, color: Colors.white.withOpacity(0.2)),
+            borderRadius: UI.borderRadius16,
+            color: AppColors.frameBgColor,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top Row: Distance, Flag, Send Icon
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Flexible(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Flexible(
-                                  child: Text(pin.location, style: text14W400White(context)),
-                                ),
-                                const SizedBox(width: 4),
-                                Image.asset(Images.trackImage, height: 20),
-                              ],
+                            child: Text(
+                              distanceText,
+                              style: text14W400White(context),
                             ),
                           ),
-                          Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(color: AppColors.borderColor1),
-                              color: AppColors.bgGroundYellow,
-                              boxShadow: [AppColors.backShadow],
-                              shape: BoxShape.circle,
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: Image.asset(Images.sendIcon, height: 20),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                                    
-                      // Title and Emoji
-                      Row(
-                        children: [
-                          Image.asset(Images.locationRedIcon, height: 20),
-                          const SizedBox(width: 4),
-                          Flexible(child: Text(pin.title, style: text18W700White(context))),
-                          const SizedBox(width: 4),
-                          if (pin.emoji != null)
-                            Image.network(pin.emoji!, height: 20, fit: BoxFit.contain),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                                    
-                      // Photos and Audios Count
-                      Row(
-                        children: [
-                          Image.asset(Images.photolibrary, height: 20),
-                          const SizedBox(width: 4),
-                          Text('${pin.photoCount} Photos', style: text14W500White(context)),
-                          const SizedBox(width: 16),
-                          Image.asset(Images.audioIcon, height: 20),
-                          const SizedBox(width: 4),
-                          Text('${pin.audioCount} Audios', style: text14W500White(context)),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                                    
-                      // Image Previews
-                      Row(
-                        children: [
-                          ...pin.imageUrls.asMap().entries.take(4).map((entry) {
-                            final idx = entry.key;
-                            final url = entry.value;
-                            final imageSize = width * 0.18;
-                                    
-                            if (idx == 3 && pin.imageUrls.length > 4) {
-                              return Container(
-                                margin: const EdgeInsets.only(right: 8),
-                                decoration: BoxDecoration(
-                                  borderRadius: UI.borderRadius8,
-                                  border: Border.all(
-                                      width: 1, color: Colors.white.withOpacity(0.5)),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: UI.borderRadius8,
-                                  child: Stack(
-                                    children: [
-                                      Image.network(
-                                        url,
-                                        height: imageSize,
-                                        width: imageSize,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(
-                                          height: imageSize,
-                                          width: imageSize,
-                                          color: Colors.grey[700],
-                                          child: const Icon(Icons.image,
-                                              color: Colors.white54, size: 30),
-                                        ),
-                                      ),
-                                      Container(
-                                        height: imageSize,
-                                        width: imageSize,
-                                        color: Colors.black.withOpacity(0.5),
-                                        child: Center(
-                                          child: Text(
-                                            '${pin.imageUrls.length - 3}+',
-                                            style: GoogleFonts.nunitoSans(
-                                              color: Colors.white,
-                                              fontSize: width * 0.035,
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }
-                                    
-                            return Container(
-                              margin: const EdgeInsets.only(right: 8),
-                              decoration: BoxDecoration(
-                                borderRadius: UI.borderRadius8,
-                                border: Border.all(
-                                    width: 1, color: Colors.white.withOpacity(0.5)),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: UI.borderRadius8,
-                                child: Image.network(
-                                  url,
-                                  height: imageSize,
-                                  width: imageSize,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    height: imageSize,
-                                    width: imageSize,
-                                    color: Colors.grey[700],
-                                    child: const Icon(Icons.image,
-                                        color: Colors.white54, size: 30),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList()
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                                    
-                      // Views and Plays
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(
-                            '${pin.viewsCount} Views',
-                            style: GoogleFonts.nunitoSans(
-                              color: AppColors.bgGroundYellow,
-                              fontSize: width * 0.03,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            '${pin.playsCount} Plays',
-                            style: GoogleFonts.nunitoSans(
-                              color: AppColors.bgGroundYellow,
-                              fontSize: width * 0.03,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                      
+                          SizedBox(width: 4),
+                          Image.asset(
+                            Images.trackImage,
+                            height: 20,
+                          )
                         ],
                       ),
                     ),
-                  ),
-            
-                  // Location & Send Icon
-                  
-                  const SizedBox(height: 20),
-            
-                  // Navigate Button
-                  
-                ],
-              ),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.borderColor1),
+                        color: AppColors.bgGroundYellow,
+                        boxShadow: [AppColors.backShadow],
+                        shape: BoxShape.circle,
+                      ),
+                      child: ClipOval(
+                        child: GestureDetector(
+                          onTap: () {
+                            print('Send icon tapped!');
+                            onSend();
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(10.0),
+                            child: Image.asset(
+                              Images.sendIcon,
+                              height: 20,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Pin Title and Emoji
+                Row(
+                  children: [
+                    Image.asset(
+                      Images.locationRedIcon,
+                      height: 20,
+                      fit: BoxFit.contain,
+                    ),
+                    Flexible(
+                      child: Text(
+                        pin.title,
+                        style: text18W700White(context),
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    if (pin.emoji != null)
+                      Image.network(
+                        pin.emoji!,
+                        height: 20,
+                        fit: BoxFit.contain,
+                      )
+                  ],
+                ),
+                const SizedBox(height: 8.0),
+
+                // Photos and Audios Count
+                Row(
+                  children: [
+                    Image.asset(
+                      Images.photolibrary,
+                      height: 20,
+                    ),
+                    const SizedBox(width: 4.0),
+                    Text(
+                      '${pin.photoCount} Photos',
+                      style: text14W500White(context),
+                    ),
+                    const SizedBox(width: 16.0),
+                    Image.asset(
+                      Images.audioIcon,
+                      height: 20,
+                    ),
+                    const SizedBox(width: 4.0),
+                    Text(
+                      '${pin.audioCount} Audios',
+                      style: text14W500White(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16.0),
+
+                // Image Previews
+                Row(
+                  spacing: 8,
+                  children: [
+                    ...pin.imageUrls.asMap().entries.take(4).map((entry) {
+                      final idx = entry.key;
+                      final url = entry.value;
+                      double imageSize = width * 0.18;
+                      if (idx == 3 && pin.imageUrls.length > 4) {
+                        return Stack(
+                          children: [
+                            _buildPreviewImage(url, imageSize),
+                            Container(
+                              height: imageSize,
+                              width: imageSize,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.5),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${pin.imageUrls.length - 3}+',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      } else {
+                        return _buildPreviewImage(url, imageSize);
+                      }
+                    }).toList(),
+                  ],
+                ),
+                const SizedBox(height: 16.0),
+
+                // Views and Plays Count
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${pin.viewsCount} Views',
+                      style: GoogleFonts.nunitoSans(
+                        color: AppColors.bgGroundYellow,
+                        fontSize: MediaQuery.of(context).size.width * 0.03,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 16.0),
+                    Text(
+                      '${pin.playsCount} Plays',
+                      style: GoogleFonts.nunitoSans(
+                        color: AppColors.bgGroundYellow,
+                        fontSize: MediaQuery.of(context).size.width * 0.03,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          );
-        },
-      );
-    },
-  );
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // Action Buttons
+        
+
+        // Bottom padding
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildPreviewImage(String url, double size) {
+    return Container(
+      margin: const EdgeInsets.only(right: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(width: 1, color: Colors.white.withOpacity(0.5)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          url,
+          height: size,
+          width: size,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Container(
+            height: size,
+            width: size,
+            color: Colors.grey[700],
+            child: const Icon(Icons.image, color: Colors.white54, size: 30),
+          ),
+        ),
+      ),
+    );
+  }
 }
-
-}
-
-// --- Bottom Sheet for Pin Details (as per your description) ---
-//   void _showPinDetailsBottomSheet(BuildContext context, Pin pin) {
-//     showModalBottomSheet(
-//       context: context,
-//       backgroundColor: Colors
-//           .transparent, // Make background transparent to show curved corners
-//       isScrollControlled: true, // Allows full height
-//       builder: (context) {
-//         return DraggableScrollableSheet(
-//           initialChildSize: 0.3, // Initial height of the sheet
-//           minChildSize: 0.3,
-//           maxChildSize: 0.8, // Max height it can expand to
-//           expand: false,
-//           builder: (BuildContext context, ScrollController scrollController) {
-//             return Container(
-//               decoration: BoxDecoration(
-//                 color: Colors.grey[900], // Dark background for the sheet
-//                 borderRadius: const BorderRadius.vertical(
-//                   top: Radius.circular(20),
-//                 ),
-//               ),
-//               child: SingleChildScrollView(
-//                 controller: scrollController,
-//                 padding: const EdgeInsets.all(20.0),
-//                 child: Column(
-//                   mainAxisSize: MainAxisSize.min,
-//                   crossAxisAlignment: CrossAxisAlignment.start,
-//                   children: [
-//                     Center(
-//                       child: Container(
-//                         width: 40,
-//                         height: 4,
-//                         margin: const EdgeInsets.only(bottom: 15),
-//                         decoration: BoxDecoration(
-//                           color: Colors.grey[700],
-//                           borderRadius: BorderRadius.circular(2),
-//                         ),
-//                       ),
-//                     ),
-//                     Text(
-//                       pin.title, // Pin Title
-//                       style: const TextStyle(
-//                         fontSize: 24,
-//                         fontWeight: FontWeight.bold,
-//                         color: Colors.white,
-//                       ),
-//                     ),
-//                     const SizedBox(height: 10),
-//                     Row(
-//                       children: [
-//                         const Icon(
-//                           Icons.directions_walk,
-//                           color: Colors.white70,
-//                           size: 18,
-//                         ),
-//                         const SizedBox(width: 5),
-//                         Text(
-//                           '${(pin.latitude / 100).toStringAsFixed(1)} KM Away', // Dummy distance
-//                           style: const TextStyle(
-//                             fontSize: 16,
-//                             color: Colors.white70,
-//                           ),
-//                         ),
-//                       ],
-//                     ),
-//                     const SizedBox(height: 15),
-//                     Row(
-//                       children: [
-//                         Icon(
-//                           Icons.photo_library,
-//                           color: Colors.white70,
-//                           size: 18,
-//                         ),
-//                         SizedBox(width: 5),
-//                         Text(
-//                           '4 photos',
-//                           style: TextStyle(color: Colors.white70),
-//                         ), // Dummy count
-//                         SizedBox(width: 15),
-//                         Icon(Icons.audiotrack, color: Colors.white70, size: 18),
-//                         SizedBox(width: 5),
-//                         Text(
-//                           '2 audios',
-//                           style: TextStyle(color: Colors.white70),
-//                         ), // Dummy count
-//                       ],
-//                     ),
-//                     const SizedBox(height: 15),
-
-//                     SizedBox(
-//                       height: 80, // Height for image thumbnails
-//                       child: ListView.builder(
-//                         scrollDirection: Axis.horizontal,
-//                         itemCount: 4, // Dummy count
-//                         itemBuilder: (context, index) {
-//                           // Use Image.network for images within the bottom sheet
-//                           String imageUrl;
-//                           if (index == 0) {
-//                             imageUrl = Images.forestImg;
-//                           } else if (index == 1) {
-//                             imageUrl = Images.rainThunder;
-//                           } else if (index == 2) {
-//                             imageUrl = Images.riverImg;
-//                           } else {
-//                             imageUrl =
-//                                 Images.forestImg; // Default or another image
-//                           }
-
-//                           return Padding(
-//                             padding: const EdgeInsets.only(right: 8.0),
-//                             child: ClipRRect(
-//                               borderRadius: BorderRadius.circular(8),
-//                               child: Image.network(
-//                                 imageUrl,
-//                                 width: 80,
-//                                 height: 80,
-//                                 fit: BoxFit.cover,
-//                                 loadingBuilder: (
-//                                   context,
-//                                   child,
-//                                   loadingProgress,
-//                                 ) {
-//                                   if (loadingProgress == null) return child;
-//                                   return Center(
-//                                     child: CircularProgressIndicator(
-//                                       value:
-//                                           loadingProgress.expectedTotalBytes !=
-//                                                   null
-//                                               ? loadingProgress
-//                                                       .cumulativeBytesLoaded /
-//                                                   loadingProgress
-//                                                       .expectedTotalBytes!
-//                                               : null,
-//                                       strokeWidth: 2,
-//                                     ),
-//                                   );
-//                                 },
-//                                 errorBuilder: (context, error, stackTrace) =>
-//                                     const Icon(
-//                                   Icons.broken_image,
-//                                   color: Colors.red,
-//                                 ),
-//                               ),
-//                             ),
-//                           );
-//                         },
-//                       ),
-//                     ),
-//                     const SizedBox(height: 15),
-//                     Row(
-//                       children: [
-//                         Icon(Icons.visibility, color: Colors.white70, size: 18),
-//                         SizedBox(width: 5),
-//                         Text(
-//                           '34 views',
-//                           style: TextStyle(color: Colors.white70),
-//                         ), // Dummy count
-//                         SizedBox(width: 15),
-//                         Icon(Icons.play_arrow, color: Colors.white70, size: 18),
-//                         SizedBox(width: 5),
-//                         Text(
-//                           '12 plays',
-//                           style: TextStyle(color: Colors.white70),
-//                         ), // Dummy count
-//                       ],
-//                     ),
-//                     const SizedBox(height: 20),
-//                     // Navigate to full details icon
-//                     Align(
-//                       alignment: Alignment.centerRight,
-//                       child: IconButton(
-//                         icon: const Icon(
-//                           Icons.arrow_forward_ios,
-//                           color: Colors.amber,
-//                           size: 30,
-//                         ),
-//                         onPressed: () {
-//                           Navigator.pop(context); // Close bottom sheet
-//                           print(
-//                             'Navigate to full Pin Information Screen for ${pin.title}',
-//                           );
-//                           // TODO: Navigate to PinInformationScreen
-//                         },
-//                       ),
-//                     ),
-//                   ],
-//                 ),
-//               ),
-//             );
-//           },
-//         );
-//       },
-//     );
-//   }
-// }

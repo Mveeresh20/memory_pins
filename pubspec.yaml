@@ -69,9 +69,12 @@ dependencies:
   dotted_border: ^2.0.0+2
   path_provider: ^2.1.5
   flutter_map: ^8.1.1
+  audio_waveforms: ^1.0.4
   latlong2: ^0.9.1
   connectivity_plus: ^6.1.4
   shared_preferences: ^2.5.3
+  flutter_sound: ^9.2.13
+  
 
   hive: ^2.2.3
   hive_flutter: ^1.1.0

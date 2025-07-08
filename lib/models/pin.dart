@@ -8,14 +8,14 @@ class Pin {
   final double longitude;
   final String imageUrl;
   final String moodIconUrl; // Placeholder for mood icon
+  final String? description; // Description/message for others (optional)
 
   final int photoCount;
   final int audioCount;
   final List<String> imageUrls; // List of URLs for preview images
+  final List<String> audioUrls; // List of URLs for audio files
   final int viewsCount;
   final int playsCount;
-
-
 
   Pin({
     required this.location,
@@ -27,13 +27,13 @@ class Pin {
     required this.longitude,
     required this.imageUrl,
     required this.moodIconUrl,
-  
+    this.description, // Made optional
     required this.photoCount,
     required this.audioCount,
     required this.imageUrls,
+    required this.audioUrls,
     required this.viewsCount,
     required this.playsCount,
-
   });
 
   factory Pin.fromJson(Map<String, dynamic> json) {
@@ -46,31 +46,35 @@ class Pin {
       latitude: json['latitude'],
       longitude: json['longitude'],
       imageUrl: json['imageUrl'],
-        moodIconUrl: json['moodIconUrl'],
-        photoCount: json['photoCount'],
-        audioCount: json['audioCount'],
-        imageUrls: json['imageUrls'],
-        viewsCount: json['viewsCount'],
-        playsCount: json['playsCount'],
-      );
-    } 
+      moodIconUrl: json['moodIconUrl'],
+      description: json['description'], // Already handles null
+      photoCount: json['photoCount'],
+      audioCount: json['audioCount'],
+      imageUrls: json['imageUrls'] ?? [],
+      audioUrls: json['audioUrls'] ?? [],
+      viewsCount: json['viewsCount'],
+      playsCount: json['playsCount'],
+    );
+  }
 
-    Map<String, dynamic> toJson() {
-      return {
-        'location': location,
-        'flagEmoji': flagEmoji,
-        'title': title,
-        'emoji': emoji,
-        'id': id,
-        'latitude': latitude,
-        'longitude': longitude,
-        'imageUrl': imageUrl,
-        'moodIconUrl': moodIconUrl,
-        'photoCount': photoCount,
-        'audioCount': audioCount,
-        'imageUrls': imageUrls,
-        'viewsCount': viewsCount,
-        'playsCount': playsCount,
+  Map<String, dynamic> toJson() {
+    return {
+      'location': location,
+      'flagEmoji': flagEmoji,
+      'title': title,
+      'emoji': emoji,
+      'id': id,
+      'latitude': latitude,
+      'longitude': longitude,
+      'imageUrl': imageUrl,
+      'moodIconUrl': moodIconUrl,
+      'description': description,
+      'photoCount': photoCount,
+      'audioCount': audioCount,
+      'imageUrls': imageUrls,
+      'audioUrls': audioUrls,
+      'viewsCount': viewsCount,
+      'playsCount': playsCount,
     };
   }
 }

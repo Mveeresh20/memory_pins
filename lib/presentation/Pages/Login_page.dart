@@ -4,6 +4,9 @@ import 'package:memory_pins_app/presentation/Pages/sign_up_page.dart';
 import 'package:memory_pins_app/presentation/Widgets/sign_in_button.dart';
 import 'package:memory_pins_app/services/auth_service.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
+import 'package:memory_pins_app/services/app_integration_service.dart';
+import 'package:memory_pins_app/providers/user_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/ui.dart';
 
@@ -16,6 +19,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final AuthService _authService = AuthService();
+  final AppIntegrationService _appService = AppIntegrationService();
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
@@ -30,7 +34,8 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       try {
-        final user = await _authService.signIn(
+        final success = await _appService.signInUser(
+          context,
           _emailController.text.trim(),
           _passwordController.text.trim(),
         );
@@ -40,16 +45,19 @@ class _LoginPageState extends State<LoginPage> {
           _isLoading = false;
         });
 
-        if (user != null) {
-          print("User signed in: [38;5;2m");
+        if (success) {
+          print("User signed in successfully");
           if (!mounted) return;
-
           Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
         } else {
           if (!mounted) return;
+          final userProvider =
+              Provider.of<UserProvider>(context, listen: false);
+          final errorMessage =
+              userProvider.error ?? 'Invalid credentials. Please try again.';
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Invalid credentials. Please try again.'),
+            SnackBar(
+              content: Text(errorMessage),
               backgroundColor: Colors.red,
             ),
           );
@@ -66,6 +74,84 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
       }
+    }
+  }
+
+  void _handleAppleSignIn() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final success = await userProvider.signInWithApple();
+
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (success) {
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+      } else {
+        final errorMessage = userProvider.error ?? 'Apple sign in failed';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('An error occurred: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _handleAnonymousSignIn() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final success = await userProvider.signInAnonymously();
+
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (success) {
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+      } else {
+        final errorMessage = userProvider.error ?? 'Anonymous sign in failed';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('An error occurred: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -128,7 +214,6 @@ class _LoginPageState extends State<LoginPage> {
                     labelStyle: const TextStyle(color: Colors.white),
                     hintText: 'Enter your email...',
                     hintStyle: TextStyle(color: Color(0xFF919EAA)),
-
                     enabledBorder: OutlineInputBorder(
                       borderSide: const BorderSide(color: Color(0xFF3C495C)),
                       borderRadius: BorderRadius.circular(12),
@@ -178,7 +263,6 @@ class _LoginPageState extends State<LoginPage> {
                     labelStyle: const TextStyle(color: Colors.white),
                     hintText: 'Enter your Password',
                     hintStyle: TextStyle(color: Color(0xFF919EAA)),
-
                     suffixIcon: IconButton(
                       icon: Icon(
                         isPasswordVisible
@@ -222,93 +306,76 @@ class _LoginPageState extends State<LoginPage> {
 
               _isLoading
                   ? Center(
-                    child: CircularProgressIndicator(color: Colors.white),
-                  )
+                      child: CircularProgressIndicator(color: Colors.white),
+                    )
                   : Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: GestureDetector(
-                      onTap: () {
-                        if (_formKey.currentState!.validate()) {
-                          _handleSignIn();
-                        }
-                      },
-                      child: SignInButton(
-                        text: "Sign in",
-                        icon: Icons.arrow_forward_sharp,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: GestureDetector(
+                        onTap: () {
+                          if (_formKey.currentState!.validate()) {
+                            _handleSignIn();
+                          }
+                        },
+                        child: SignInButton(
+                          text: "Sign in",
+                          icon: Icons.arrow_forward_sharp,
+                        ),
                       ),
                     ),
-                  ),
               SizedBox(height: 24),
 
               _isLoading
                   ? Center(
-                    child: CircularProgressIndicator(color: Colors.white),
-                  )
+                      child: CircularProgressIndicator(color: Colors.white),
+                    )
                   : Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: GestureDetector(
-                      onTap: () {
-                        _authService.signInWithApple();
-                      },
-                      child: SignInButton(
-                        iconFirst: true,
-                        icon: Icons.apple_sharp,
-                        text: "Sign in with Apple",
-                        isWhiteBackground: true,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: GestureDetector(
+                        onTap: () {
+                          _handleAppleSignIn();
+                        },
+                        child: SignInButton(
+                          iconFirst: true,
+                          icon: Icons.apple_sharp,
+                          text: "Sign in with Apple",
+                          isWhiteBackground: true,
+                        ),
                       ),
                     ),
-                  ),
 
               SizedBox(height: 12),
 
               _isLoading
                   ? Center(
-                    child: CircularProgressIndicator(color: Colors.white),
-                  )
+                      child: CircularProgressIndicator(color: Colors.white),
+                    )
                   : Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: GestureDetector(
-                      onTap: () async {
-                        setState(() {
-                          _isLoading = true;
-                        });
-                        try {
-                          await _authService.signInAnonymously(context);
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            (SnackBar(content: Text("An error occured :$e"))),
-                          );
-                        } finally {
-                          if (mounted) {
-                            setState(() {
-                              _isLoading = false;
-                            });
-                          }
-                        }
-                      },
-                      child: SignInButton(
-                        icon: Icons.arrow_forward_sharp,
-                        text: "Continue as Guest",
-                        isWhiteBackground: true,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: GestureDetector(
+                        onTap: () {
+                          _handleAnonymousSignIn();
+                        },
+                        child: SignInButton(
+                          icon: Icons.arrow_forward_sharp,
+                          text: "Continue as Guest",
+                          isWhiteBackground: true,
+                        ),
                       ),
                     ),
-                  ),
               SizedBox(height: 60),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    "Don’t have an account?",
+                    "Don't have an account?",
                     style: GoogleFonts.nunitoSans(
                       fontWeight: FontWeight.w500,
                       fontSize: 16,
                       color: Colors.white,
                     ),
                   ),
-
                   SizedBox(width: 4),
-
                   GestureDetector(
                     onTap: () {
                       NavigationService.pushNamed('/signup');

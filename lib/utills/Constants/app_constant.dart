@@ -1,14 +1,14 @@
 class AppConstant {
-  static const String baseUrl = "https://api.stentryplatform.info/"; //PRODUCTION URL
-  // static const String baseUrl = "https://d1r9c4nksnam33.cloudfront.net/"; //Test URL
+  // static const String baseUrl = "https://api.stentryplatform.info/"; //PRODUCTION URL
+  static const String baseUrl = "https://d1r9c4nksnam33.cloudfront.net/"; //Test URL
   static const String baseUrlForUploadPostApi = "${baseUrl}upload";
 
-  // static const String bundleNameForPostAPI = "w12";   //Test
-  // static const String bundleNameToFetchImage = "w12/"; //Test
+  static const String bundleNameForPostAPI = "p27";   //Test
+  static const String bundleNameToFetchImage = "p27/"; //Test
 
 
-  static const String bundleNameForPostAPI = ""; //Prod
-  static const String bundleNameToFetchImage = ""; //Prod
+  // static const String bundleNameForPostAPI = ""; //Prod
+  // static const String bundleNameToFetchImage = ""; //Prod
 
 
   static const String baseUrlToFetchStaticImage =

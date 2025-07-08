@@ -29,6 +29,9 @@ import 'package:memory_pins_app/services/hive_service.dart';
 import 'package:memory_pins_app/services/location_service.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
+import 'package:memory_pins_app/providers/pin_provider.dart';
+import 'package:memory_pins_app/providers/tapu_provider.dart';
+import 'package:memory_pins_app/providers/user_provider.dart';
 import 'package:provider/provider.dart';
 
 void main() async {
@@ -90,6 +93,15 @@ class MyApp extends StatelessWidget {
       providers: [
         Provider<LocationService>(
           create: (_) => LocationService(),
+        ),
+        ChangeNotifierProvider<PinProvider>(
+          create: (_) => PinProvider(),
+        ),
+        ChangeNotifierProvider<TapuProvider>(
+          create: (_) => TapuProvider(),
+        ),
+        ChangeNotifierProvider<UserProvider>(
+          create: (_) => UserProvider(),
         ),
       ],
       child: MaterialApp(

@@ -48,10 +48,11 @@ class _PinDetailScreenState extends State<PinDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- Pin Title ---
-             
-                Center(
-                  child: Text(
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+
+                  Text(
                     '📍Title: ${widget.pinDetail.title}',
                     style: GoogleFonts.nunitoSans(
                       color: Colors.white,
@@ -59,7 +60,27 @@ class _PinDetailScreenState extends State<PinDetailScreen> {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                ),
+
+                  Icon(Icons.bookmark_border_rounded, color: Colors.white, size: 20),
+
+                ],
+              ),
+
+  
+              
+              
+              // --- Pin Title ---
+             
+                // Center(
+                //   child: Text(
+                //     '📍Title: ${widget.pinDetail.title}',
+                //     style: GoogleFonts.nunitoSans(
+                //       color: Colors.white,
+                //       fontSize: 14,
+                //       fontWeight: FontWeight.w900,
+                //     ),
+                //   ),
+                // ),
               const SizedBox(height: 24),
         
               // --- Quote/Description Section ---
