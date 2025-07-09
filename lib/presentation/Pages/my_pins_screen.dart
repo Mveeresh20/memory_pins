@@ -29,7 +29,8 @@ class MyPinsScreen extends StatefulWidget {
 
 class _MyPinsScreenState extends State<MyPinsScreen> {
   final AppIntegrationService _appService = AppIntegrationService();
-  String _selectedMonth = 'August';
+  String _selectedMonth = ''; // Will be set to current month in initState
+  List<Pin> _filteredPins = []; // Add filtered pins list
 
   // List of available months for the dropdown
   final List<String> _months = [
@@ -50,6 +51,10 @@ class _MyPinsScreenState extends State<MyPinsScreen> {
   @override
   void initState() {
     super.initState();
+    // Set current month as default
+    final currentMonth = DateTime.now().month;
+    _selectedMonth = _months[currentMonth - 1];
+
     // Load user pins when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadUserPins();
@@ -59,6 +64,20 @@ class _MyPinsScreenState extends State<MyPinsScreen> {
   void _loadUserPins() {
     final pinProvider = Provider.of<PinProvider>(context, listen: false);
     pinProvider.loadUserPins();
+  }
+
+  // Apply month filter
+  void _applyMonthFilter(List<Pin> userPins) {
+    final pinProvider = Provider.of<PinProvider>(context, listen: false);
+    final monthIndex = _months.indexOf(_selectedMonth);
+    final currentYear = DateTime.now().year;
+    final selectedMonth = DateTime(currentYear, monthIndex + 1);
+
+    setState(() {
+      _filteredPins = pinProvider.filterPinsByMonth(userPins, selectedMonth);
+    });
+
+    print('Filtered pins for $_selectedMonth: ${_filteredPins.length} pins');
   }
 
   @override
@@ -73,6 +92,13 @@ class _MyPinsScreenState extends State<MyPinsScreen> {
           final userPins = pinProvider.userPins;
           final isLoading = pinProvider.isLoading;
           final error = pinProvider.error;
+
+          // Apply filter when userPins change
+          if (_filteredPins.isEmpty && userPins.isNotEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _applyMonthFilter(userPins);
+            });
+          }
 
           return Padding(
             padding: EdgeInsets.symmetric(horizontal: 16).copyWith(top: 16),
@@ -137,19 +163,12 @@ class _MyPinsScreenState extends State<MyPinsScreen> {
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600),
                               onChanged: (String? newValue) {
-                                setState(() {
-                                  _selectedMonth = newValue!;
-                                });
-                                // Filter pins by month
                                 if (newValue != null) {
-                                  final monthIndex = _months.indexOf(newValue);
-                                  final month = DateTime.now().year;
-                                  final filteredPins =
-                                      pinProvider.filterPinsByMonth(
-                                    userPins,
-                                    DateTime(month, monthIndex + 1),
-                                  );
-                                  // You can implement month filtering logic here
+                                  setState(() {
+                                    _selectedMonth = newValue;
+                                  });
+                                  // Apply real-time filtering
+                                  _applyMonthFilter(userPins);
                                 }
                               },
                               items: _months.map<DropdownMenuItem<String>>(
@@ -205,7 +224,7 @@ class _MyPinsScreenState extends State<MyPinsScreen> {
                         ),
                       ),
 
-                    // Empty state
+                    // Empty state - show when no pins at all
                     if (!isLoading && userPins.isEmpty && error == null)
                       Container(
                         padding: EdgeInsets.all(32),
@@ -258,17 +277,53 @@ class _MyPinsScreenState extends State<MyPinsScreen> {
                         ),
                       ),
 
+                    // Empty state for filtered results
+                    if (!isLoading &&
+                        userPins.isNotEmpty &&
+                        _filteredPins.isEmpty &&
+                        error == null)
+                      Container(
+                        padding: EdgeInsets.all(32),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.filter_list,
+                              size: 64,
+                              color: Colors.grey[600],
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No pins in $_selectedMonth',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Try selecting a different month to see your pins',
+                              style: TextStyle(
+                                color: Colors.grey[500],
+                                fontSize: 14,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+
                     // Pins list
-                    if (!isLoading && userPins.isNotEmpty)
+                    if (!isLoading && _filteredPins.isNotEmpty)
                       ListView.separated(
                         shrinkWrap: true,
                         physics: NeverScrollableScrollPhysics(),
                         separatorBuilder: (context, index) {
                           return SizedBox(height: 12);
                         },
-                        itemCount: userPins.length,
+                        itemCount: _filteredPins.length,
                         itemBuilder: (context, index) {
-                          final pin = userPins[index];
+                          final pin = _filteredPins[index];
                           // Convert Pin to PinItem for the widget
                           final pinItem = PinItem(
                             location: pin.location,
@@ -281,7 +336,11 @@ class _MyPinsScreenState extends State<MyPinsScreen> {
                             viewsCount: pin.viewsCount,
                             playsCount: pin.playsCount,
                           );
-                          return PinCard(pin: pinItem);
+                          return PinCard(
+                            pin: pinItem,
+                            originalPin:
+                                pin, // Pass the original pin for navigation
+                          );
                         },
                       ),
                   ],

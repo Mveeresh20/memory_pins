@@ -5,6 +5,9 @@ import 'package:memory_pins_app/presentation/Widgets/saved_pin_card.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/label_text_style.dart';
+import 'package:memory_pins_app/providers/pin_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:memory_pins_app/models/pin.dart';
 
 class SavedPins extends StatefulWidget {
   const SavedPins({super.key});
@@ -14,122 +17,161 @@ class SavedPins extends StatefulWidget {
 }
 
 class _SavedPinsState extends State<SavedPins> {
+  @override
+  void initState() {
+    super.initState();
+    // Load saved pins when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final pinProvider = Provider.of<PinProvider>(context, listen: false);
+      pinProvider.loadSavedPins();
+    });
+  }
 
-  final List<SavedPinItem> _allPins = [
-    SavedPinItem(
-      location: 'New Jersey',
-      // Example flag emoji
-      title: 'Rainy Window Seat',
-      emoji: Images.smileImg,
-      photoCount: 7,
-      audioCount: 1,
-      imageUrls: [
-        Images.umbrellaImg,
-        Images.childUmbrella,
-        Images.manWithRiver,
-        Images.rainImg,
-        Images.umbrellaImg
-      ],
-      viewsCount: 34,
-      playsCount: 12,
-    ),
-    SavedPinItem(
-      location: 'Washington DC',
-      flagEmoji: '🇺🇸',
-      title: 'Sunset Goodbye',
-      emoji: Images.confusionImg,
-      photoCount: 9,
-      audioCount: 2,
-      imageUrls: [
-        Images.umbrellaImg,
-        Images.childUmbrella,
-        Images.manWithRiver,
-        Images.rainImg
-      ],
-      viewsCount: 500,
-      playsCount: 5,
-    ),
-    SavedPinItem(
-      location:
-          'Inter Milan', // Assuming this is a place, not the football club
+  // Convert Pin to SavedPinItem for the UI
+  SavedPinItem _convertPinToSavedPinItem(Pin pin) {
+    print('Converting pin to SavedPinItem:');
+    print('  Title: ${pin.title}');
+    print('  Location: ${pin.location}');
+    print('  Photo count: ${pin.photoCount}');
+    print('  Audio count: ${pin.audioCount}');
+    print('  Image URLs: ${pin.imageUrls}');
+    print('  Views: ${pin.viewsCount}');
+    print('  Plays: ${pin.playsCount}');
 
-      title: 'Lighthouse Curve',
-      emoji: Images.dancingImg,
-      photoCount: 7,
-      audioCount: 1,
-      imageUrls: [
-        Images.umbrellaImg,
-        Images.childUmbrella,
-        Images.manWithRiver,
-        Images.rainImg
-      ],
-      viewsCount: 34,
-      playsCount: 12,
-    ),
-    // Add more PinItem instances as needed
-  ];
+    // Validate pin data and provide fallbacks
+    final validTitle = pin.title.isNotEmpty ? pin.title : 'Untitled Pin';
+    final validLocation =
+        pin.location.isNotEmpty ? pin.location : 'Unknown Location';
+    final validEmoji = pin.emoji?.isNotEmpty == true
+        ? pin.emoji!
+        : pin.moodIconUrl.isNotEmpty
+            ? pin.moodIconUrl
+            : Images.smileImg;
+    final validImageUrls =
+        pin.imageUrls.isNotEmpty ? pin.imageUrls : [Images.umbrellaImg];
 
-
+    return SavedPinItem(
+      location: validLocation,
+      title: validTitle,
+      emoji: validEmoji,
+      photoCount: pin.photoCount,
+      audioCount: pin.audioCount,
+      imageUrls: validImageUrls,
+      viewsCount: pin.viewsCount,
+      playsCount: pin.playsCount,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFF131F2B),
-      body: SingleChildScrollView(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16).copyWith(top: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
+      body: Consumer<PinProvider>(
+        builder: (context, pinProvider, child) {
+          final savedPins = pinProvider.savedPins;
+          final isLoading = pinProvider.isLoading;
+
+          return SingleChildScrollView(
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16)
+                    .copyWith(top: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.frameBgColor,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14.0, vertical: 17),
-                          child: Icon(
-                            Icons.arrow_back_ios_new_rounded,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        )),
-        
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.frameBgColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14.0, vertical: 17),
+                              child: Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            )),
                         SizedBox(width: 12),
-                    Text("Saved Pins", style: text18W700White(context)),
+                        Text("Saved Pins", style: text18W700White(context)),
+                      ],
+                    ),
+
+                    SizedBox(height: 24),
+
+                    // Show loading indicator if loading
+                    if (isLoading)
+                      Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                        ),
+                      )
+                    else if (savedPins.isEmpty)
+                      // Show empty state
+                      Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.bookmark_border,
+                              color: Colors.white54,
+                              size: 64,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No saved pins yet',
+                              style: text16W600White(context),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Save pins from the map to see them here',
+                              style: text12W400White(context),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      // Show saved pins list
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: NeverScrollableScrollPhysics(),
+                        separatorBuilder: (context, index) {
+                          return SizedBox(
+                            height: 12,
+                          );
+                        },
+                        itemCount: savedPins.length,
+                        itemBuilder: (context, index) {
+                          final pin = savedPins[index];
+                          print(
+                              'Building saved pin card for index $index: ${pin.title}');
+
+                          // Skip pins with completely invalid data
+                          if (pin.title.isEmpty && pin.location.isEmpty) {
+                            print(
+                                'Skipping pin with invalid data at index $index');
+                            return SizedBox.shrink();
+                          }
+
+                          final savedPinItem = _convertPinToSavedPinItem(pin);
+                          return SavedPinCard(
+                            pins: savedPinItem,
+                            originalPin: pin, // Pass the original pin object
+                          );
+                        },
+                      )
                   ],
                 ),
-
-                SizedBox(height: 24),
-        
-                ListView.separated(
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    separatorBuilder: (context, index) {
-                      return SizedBox(
-                        height: 12,
-                      );
-                    },
-        
-                    itemCount:
-                        _allPins.length, // Use the length of your dynamic data
-                    itemBuilder: (context, index) {
-                      final pin = _allPins[index]; // Get the current PinItem
-                      return SavedPinCard(
-                          pins: pin); // Pass the dynamic data to your card widget
-                    },
-                  )
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
-
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(vertical: 15),
         decoration: BoxDecoration(
@@ -204,5 +246,4 @@ class _SavedPinsState extends State<SavedPins> {
       ),
     );
   }
-
 }

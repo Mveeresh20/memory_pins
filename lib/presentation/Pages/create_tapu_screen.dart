@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +28,7 @@ class CreateTapuScreen extends StatefulWidget {
 }
 
 class _CreateTapuScreenState extends State<CreateTapuScreen> {
+  File? _selectedImage;
   Map<String, dynamic> _location = {};
 
   bool isEdit = false;
@@ -80,6 +82,17 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
     Images.smileImg,
     Images.winklingImg,
   ];
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      setState(() {
+        _selectedImage = File(pickedFile.path);
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -645,59 +658,58 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
           child: Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: 16).copyWith(top: 16),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.frameBgColor,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14.0, vertical: 17),
-                            child: Icon(
-                              Icons.arrow_back_ios_new_rounded,
-                              color: Colors.white,
-                              size: 20,
+            child: SingleChildScrollView(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.frameBgColor,
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                          )),
-                      Expanded(
-                          child: Center(
-                        child: Text("Create New Tapu",
-                            textAlign: TextAlign.center,
-                            style: text18W700White(context)),
-                      )),
-                    ],
-                  ),
-        
-                  const SizedBox(height: 20),
-        
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text("Central Location",
-                          style: text16W400White(context)),
-                    ],
-                  ),
-        
-                  
-        
-                  // --- Location Section ---
-                  GestureDetector(
-                    onTap: showLocationPicker, // Re-fetch location on tap
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14.0, vertical: 17),
+                              child: Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            )),
+                        Expanded(
+                            child: Center(
+                          child: Text("Create New Tapu",
+                              textAlign: TextAlign.center,
+                              style: text18W700White(context)),
+                        )),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.location_on,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text("Central Location",
+                            style: text16W400White(context)),
+                      ],
+                    ),
+
+                    // --- Location Section ---
+                    GestureDetector(
+                      onTap: showLocationPicker, // Re-fetch location on tap
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
                         child: Text(
                           _currentLocationAddress,
                           style: const TextStyle(
@@ -708,125 +720,178 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
                         ),
                       ),
                     ),
-                  ),
-        
-                  const SizedBox(height: 20),
-        
-                  _buildSectionHeader('Tapu Title', Images.pinicon),
-                  const SizedBox(height: 7),
-                  _buildTextField(_pinTitleController, 'Enter Tapu Title'),
-        
-                  const SizedBox(height: 20),
-        
-                  // --- Select Mood Section ---
-                  _buildSectionHeader('Dominant Mood', Images.tapuMoodImg),
-        
-                  const SizedBox(height: 7),
-        
-                  Row(
-                    spacing: 6,
-                    children: _moodEmojis.map((url) {
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedMoodIconUrl = url;
-                          });
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _selectedMoodIconUrl == url
-                                ? Color(0xFF531DAB)
-                                : Colors.white,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Image.network(
-                              url,
-                              height: 40,
-                              fit: BoxFit.contain,
-                              loadingBuilder:
-                                  (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Center(
-                                  child: CircularProgressIndicator(
-                                    value:
-                                        loadingProgress.expectedTotalBytes !=
-                                                null
-                                            ? loadingProgress
-                                                    .cumulativeBytesLoaded /
-                                                loadingProgress
-                                                    .expectedTotalBytes!
-                                            : null,
-                                    strokeWidth: 1.5,
-                                    color: Colors.grey,
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) =>
-                                  const Icon(
-                                Icons.emoji_emotions,
-                                color: Colors.grey,
-                                size: 40,
+
+                    const SizedBox(height: 20),
+
+                    _buildSectionHeader('Tapu Title', Images.pinicon),
+                    const SizedBox(height: 7),
+                    _buildTextField(_pinTitleController, 'Enter Tapu Title'),
+
+                    const SizedBox(height: 20),
+                    _buildSectionHeader(
+                        'Tapu Banner Image(Central image)', Images.galleryIcon),
+
+                    SizedBox(height: 7),
+
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF253743),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: Center(
+                        
+                          child: GestureDetector(
+                            onTap: _pickImage,
+                            child: CustomPaint(
+                              painter:
+                                  DottedCirclePainter(), // Draws the dotted circular border
+                              child: SizedBox(
+                                width:
+                                    100, 
+                                height: 100,
+                                child: Center(
+                                  
+                                  child: _selectedImage == null
+                                      ? Image.asset(
+                                          "assets/icons/camera.png",
+                                          height: 40,
+                                        )
+                                      : ClipOval(
+                                          
+                                          child: Image.file(
+                                            _selectedImage!, // Displays the selected image file
+                                            width:
+                                                150, 
+                                            height: 150,
+                                            fit: BoxFit
+                                                .cover, 
+                                          ),
+                                        ),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    "Later, Automatically detected based on your pins",
-                    style: text15W400White(context),
-                  ),
-        
-                  // --- Pin Title Input ---
-        
-                  const SizedBox(height: 20),
-        
-                  // --- Record Voice Section (Updated to match Figma) ---
-        
-                  // --- Add Photos Section ---
-        
-                  // --- Message for Others Input ---
-                  _buildSectionHeader('Description', Images.messageicon),
-                  const SizedBox(height: 7),
-                  _buildTextField(
-                    _messageController,
-                    'Write a message...',
-                    maxLines: 5,
-                  ),
-        
-                  Spacer(),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
 
-                  Text("You can Now Add Pins within 5Km’s of this Spot",style: text16W400White(context),),
-                  
-                  Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 0,vertical: 16),
-            child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                    color: AppColors.bgGroundYellow,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.borderColor1, width: 1),
-                    boxShadow: [
-                      AppColors.backShadow,
-                    ]),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  child: Center(
-                      child: Text(
-                    "Create Tapu",
-                    style: GoogleFonts.nunitoSans(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black),
-                  )),
-                )),
-          ) // Pushes the next content to the bottom
-                  
-                ]),
+                    // --- Select Mood Section ---
+                    _buildSectionHeader('Dominant Mood', Images.tapuMoodImg),
+
+                    const SizedBox(height: 7),
+
+                    Row(
+                      spacing: 6,
+                      children: _moodEmojis.map((url) {
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedMoodIconUrl = url;
+                            });
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _selectedMoodIconUrl == url
+                                  ? Color(0xFF531DAB)
+                                  : Colors.white,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Image.network(
+                                url,
+                                height: 40,
+                                fit: BoxFit.contain,
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Center(
+                                    child: CircularProgressIndicator(
+                                      value:
+                                          loadingProgress.expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                              : null,
+                                      strokeWidth: 1.5,
+                                      color: Colors.grey,
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(
+                                  Icons.emoji_emotions,
+                                  color: Colors.grey,
+                                  size: 40,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      "Later, Automatically detected based on your pins",
+                      style: text15W400White(context),
+                    ),
+
+                    // --- Pin Title Input ---
+
+                    const SizedBox(height: 20),
+
+                    // --- Record Voice Section (Updated to match Figma) ---
+
+                    // --- Add Photos Section ---
+
+                    // --- Message for Others Input ---
+                    _buildSectionHeader('Description', Images.messageicon),
+                    const SizedBox(height: 7),
+                    _buildTextField(
+                      _messageController,
+                      'Write a message...',
+                      maxLines: 5,
+                    ),
+
+                    SizedBox(height: 40),
+
+                    Text(
+                      "You can Now Add Pins within 5Km’s of this Spot",
+                      style: text16W400White(context),
+                    ),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 0, vertical: 16),
+                      child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                              color: AppColors.bgGroundYellow,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                  color: AppColors.borderColor1, width: 1),
+                              boxShadow: [
+                                AppColors.backShadow,
+                              ]),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            child: Center(
+                                child: Text(
+                              "Create Tapu",
+                              style: GoogleFonts.nunitoSans(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.black),
+                            )),
+                          )),
+                    ) // Pushes the next content to the bottom
+                  ]),
+            ),
           ),
         ));
   }
@@ -1174,5 +1239,46 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
         elevation: 5,
       ),
     );
+  }
+}
+
+class DottedCirclePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = Colors.white // Color of the dotted line
+      ..style = PaintingStyle.stroke // Only stroke the path, don't fill
+      ..strokeWidth = 2.0; // Thickness of the dotted line
+
+    final double radius = size.width / 2; // Calculate the radius of the circle
+    final Offset center =
+        Offset(size.width / 2, size.height / 2); // Center of the circle
+
+    // Create a circular path
+    final Path path = Path();
+    path.addOval(Rect.fromCircle(center: center, radius: radius));
+
+    const double dashLength = 8.0; // Length of each dash segment
+    const double dashSpace = 8.0; // Space between dash segments
+
+    double distance = 0.0;
+    // Iterate over the path metrics to draw dashed segments
+    for (PathMetric pathMetric in path.computeMetrics()) {
+      while (distance < pathMetric.length) {
+        // Extract a segment of the path for the dash
+        canvas.drawPath(
+          pathMetric.extractPath(distance, distance + dashLength),
+          paint,
+        );
+        distance += dashLength + dashSpace; // Move to the next dash position
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    // Return false as the painter's properties don't change,
+    // so it doesn't need to repaint unless explicitly told.
+    return false;
   }
 }

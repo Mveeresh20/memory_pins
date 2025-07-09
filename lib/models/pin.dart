@@ -16,6 +16,7 @@ class Pin {
   final List<String> audioUrls; // List of URLs for audio files
   final int viewsCount;
   final int playsCount;
+  final DateTime? createdAt; // Add timestamp for filtering
 
   Pin({
     required this.location,
@@ -34,6 +35,7 @@ class Pin {
     required this.audioUrls,
     required this.viewsCount,
     required this.playsCount,
+    this.createdAt, // Make it optional
   });
 
   factory Pin.fromJson(Map<String, dynamic> json) {
@@ -54,6 +56,8 @@ class Pin {
       audioUrls: json['audioUrls'] ?? [],
       viewsCount: json['viewsCount'],
       playsCount: json['playsCount'],
+      createdAt:
+          json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
     );
   }
 
@@ -75,6 +79,7 @@ class Pin {
       'audioUrls': audioUrls,
       'viewsCount': viewsCount,
       'playsCount': playsCount,
+      'createdAt': createdAt?.toIso8601String(),
     };
   }
 }

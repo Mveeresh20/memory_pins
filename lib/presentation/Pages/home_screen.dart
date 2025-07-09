@@ -178,7 +178,10 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PinDetailScreen(pinDetail: pinDetail),
+        builder: (context) => PinDetailScreen(
+          pinDetail: pinDetail,
+          originalPin: pin, // Pass the original pin object
+        ),
       ),
     );
   }
@@ -601,16 +604,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                 padding: EdgeInsets.symmetric(horizontal: 16),
                                 child: _PinDetailsContent(
                                   pin: _selectedPin!,
-                                  // onSave: () {
-                                  //   final pinProvider =
-                                  //       Provider.of<PinProvider>(context,
-                                  //           listen: false);
-                                  //   pinProvider.savePin(_selectedPin!.id);
-                                  //   _hidePinDetails();
-                                  // },
-                                  // onShare: () {
-                                  //   _hidePinDetails();
-                                  // },
                                   onSend: () =>
                                       _navigateToPinDetail(_selectedPin!),
                                 ),
@@ -709,14 +702,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class _PinDetailsContent extends StatelessWidget {
   final Pin pin;
-  
-  
   final VoidCallback onSend;
 
   const _PinDetailsContent({
     required this.pin,
-    
-    
     required this.onSend,
   });
 
@@ -909,11 +898,6 @@ class _PinDetailsContent extends StatelessWidget {
             ),
           ),
         ),
-
-        const SizedBox(height: 20),
-
-        // Action Buttons
-        
 
         // Bottom padding
         const SizedBox(height: 20),

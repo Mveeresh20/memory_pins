@@ -64,6 +64,7 @@ class Images {
   static const parentVector = "assets/icons/parent_vector_icon.png";
   static const trackImage = "assets/images/track_image.png";
   static const sendIcon = "assets/icons/send_icon.png";
+  static const galleryIcon= "assets/icons/gallery.png";
 
   static const umbrellaImg =
       "https://ik.imagekit.io/sports123/child_umbrealla.jpg?updatedAt=1750323489838";
@@ -114,6 +115,8 @@ class Images {
      static const logoutImg= "https://ik.imagekit.io/sports123/ic_round-logout.png?updatedAt=1750680231180";
 
      static const deleteImg= "https://ik.imagekit.io/sports123/Vector%20(14).png?updatedAt=1750680215369";
+
+     
 
      
 

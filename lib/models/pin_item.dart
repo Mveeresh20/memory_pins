@@ -21,6 +21,7 @@ class PinItem {
     required this.imageUrls,
     required this.viewsCount,
     required this.playsCount,
+    
   });
 
   // Example factory constructor for converting from a JSON-like map (e.g., from an API)

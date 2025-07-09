@@ -37,6 +37,19 @@ import 'package:provider/provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Suppress network image errors globally
+  FlutterError.onError = (FlutterErrorDetails details) {
+    // Suppress network image errors (403, 404, etc.)
+    if (details.exception.toString().contains('HTTP request failed') ||
+        details.exception.toString().contains('statusCode: 403') ||
+        details.exception.toString().contains('statusCode: 404')) {
+      // Silently ignore network image errors
+      return;
+    }
+    // Handle other errors normally
+    FlutterError.presentError(details);
+  };
+
   try {
     // Initialize Firebase
     await Firebase.initializeApp(

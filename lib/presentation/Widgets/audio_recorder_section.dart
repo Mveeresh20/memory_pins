@@ -35,10 +35,15 @@ class WaveformPainter extends CustomPainter {
         : 0.0;
 
     // Define the repeating height pattern
-    final heightPattern = [0.2, 0.4, 0.6, 0.4, 0.8, 0.3, 0.5, 0.7];
+    final heightPattern = [
+      0.2,
+      0.4,
+      0.6,
+      0.4,
+    ];
 
     int patternLength = heightPattern.length;
-    int barSpacing = 3; // space between waveform bars
+    int barSpacing = 4; // space between waveform bars
 
     for (int i = 0; i < size.width; i += barSpacing) {
       int patternIndex = (i ~/ barSpacing) % patternLength;
@@ -52,10 +57,13 @@ class WaveformPainter extends CustomPainter {
           ? Color(0xFF0CA3FC) // Played
           : Color(0xFF64748B); // Unplayed
 
-      // Animate slight height change if playing
+      // Animate slight height change if playing (more dynamic for recording)
       if (isPlaying && normalizedPosition <= progress) {
-        barHeight *=
-            0.9 + 0.1 * (DateTime.now().millisecondsSinceEpoch % 1000) / 1000;
+        // Add more dynamic animation for recording
+        double animationFactor =
+            (DateTime.now().millisecondsSinceEpoch % 500) / 500.0;
+        double randomFactor = 0.8 + 0.4 * animationFactor;
+        barHeight *= randomFactor;
       }
 
       // Draw waveform bar
@@ -335,7 +343,7 @@ class _RecordedAudioListItemState extends State<RecordedAudioListItem> {
                 GestureDetector(
                   onTap: widget.onDelete,
                   child: Container(
-                    padding: EdgeInsets.all(4),
+                    padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.red.withOpacity(0.8),
                       shape: BoxShape.circle,
@@ -397,6 +405,10 @@ class _AudioRecorderSectionState extends State<AudioRecorderSection> {
   bool _isPlayingAudio = false;
   Duration _currentPlaybackPosition = Duration.zero;
 
+  // For real-time waveform animation during recording
+  Timer? _waveformTimer;
+  double _waveformProgress = 0.0;
+
   @override
   void initState() {
     super.initState();
@@ -438,6 +450,7 @@ class _AudioRecorderSectionState extends State<AudioRecorderSection> {
   @override
   void dispose() {
     _recordingTimer?.cancel();
+    _waveformTimer?.cancel();
     _recorderController.dispose();
     if (_audioState == AudioState.recorded && _playerController != null) {
       _playerController.dispose();
@@ -508,8 +521,11 @@ class _AudioRecorderSectionState extends State<AudioRecorderSection> {
       setState(() {
         _audioState = AudioState.recording;
         _recordingDuration = 0;
+        _waveformProgress = 0.0;
+        _isRecordingPaused = false;
       });
 
+      // Start recording timer
       _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (mounted) {
           setState(() {
@@ -517,6 +533,22 @@ class _AudioRecorderSectionState extends State<AudioRecorderSection> {
           });
         }
       });
+
+      // Start waveform animation timer
+      _waveformTimer =
+          Timer.periodic(const Duration(milliseconds: 100), (timer) {
+        if (mounted &&
+            _audioState == AudioState.recording &&
+            !_isRecordingPaused) {
+          setState(() {
+            _waveformProgress += 0.01; // Increment progress
+            if (_waveformProgress > 1.0) {
+              _waveformProgress = 0.0; // Reset when it reaches the end
+            }
+          });
+        }
+      });
+
       print('Recording started successfully');
     } catch (e) {
       print('Error starting recording: $e');
@@ -533,11 +565,13 @@ class _AudioRecorderSectionState extends State<AudioRecorderSection> {
     try {
       final path = await _recorderController.stop();
       _recordingTimer?.cancel();
+      _waveformTimer?.cancel();
 
       if (path != null) {
         setState(() {
           _audioState = AudioState.recorded;
           _audioFilePath = path;
+          _waveformProgress = 0.0;
         });
 
         // Initialize player controller for the recorded file
@@ -573,6 +607,7 @@ class _AudioRecorderSectionState extends State<AudioRecorderSection> {
       setState(() {
         _audioState = AudioState.initial;
         _recordingDuration = 0;
+        _waveformProgress = 0.0;
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -611,6 +646,7 @@ class _AudioRecorderSectionState extends State<AudioRecorderSection> {
     try {
       await _recorderController.pause();
       _recordingTimer?.cancel();
+      _waveformTimer?.cancel();
       setState(() {
         _isRecordingPaused = true;
       });
@@ -633,10 +669,26 @@ class _AudioRecorderSectionState extends State<AudioRecorderSection> {
         _isRecordingPaused = false;
       });
 
+      // Resume recording timer
       _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (mounted) {
           setState(() {
             _recordingDuration++;
+          });
+        }
+      });
+
+      // Resume waveform animation timer
+      _waveformTimer =
+          Timer.periodic(const Duration(milliseconds: 100), (timer) {
+        if (mounted &&
+            _audioState == AudioState.recording &&
+            !_isRecordingPaused) {
+          setState(() {
+            _waveformProgress += 0.01; // Increment progress
+            if (_waveformProgress > 1.0) {
+              _waveformProgress = 0.0; // Reset when it reaches the end
+            }
           });
         }
       });
@@ -683,9 +735,11 @@ class _AudioRecorderSectionState extends State<AudioRecorderSection> {
         _recordingDuration = 0;
         _isPlayingAudio = false;
         _isRecordingPaused = false;
+        _waveformProgress = 0.0;
       });
 
       _recordingTimer?.cancel();
+      _waveformTimer?.cancel();
 
       // Notify parent component about the deleted audio
       if (widget.onAudioDeleted != null) {
@@ -815,19 +869,24 @@ class _AudioRecorderSectionState extends State<AudioRecorderSection> {
             children: [
               // Waveform visualization
               Expanded(
-                child: AudioWaveforms(
-                  enableGesture: false,
-                  size: Size(MediaQuery.of(context).size.width - 40, 80),
-                  recorderController: _recorderController,
-                  waveStyle: const WaveStyle(
-                    waveColor: Colors.white,
-                    extendWaveform: true,
-                    showMiddleLine: false,
-                    showDurationLabel: false,
-                    spacing: 5.0,
-                    waveThickness: 3,
+                child: Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.transparent,
                   ),
-                  padding: EdgeInsets.zero,
+                  child: CustomPaint(
+                    painter: WaveformPainter(
+                      isPlaying: _audioState == AudioState.recording &&
+                          !_isRecordingPaused,
+                      position: Duration(
+                          milliseconds: (_waveformProgress * 1000).round()),
+                      duration: Duration(
+                          seconds:
+                              1), // Use 1 second as base duration for animation
+                    ),
+                    size: Size(MediaQuery.of(context).size.width - 40, 80),
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -844,32 +903,72 @@ class _AudioRecorderSectionState extends State<AudioRecorderSection> {
           ),
         ),
         const SizedBox(height: 20),
+
         // Control buttons
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Stop Button
-            _buildIconButton(
-              icon: Icons.stop,
-              onTap: _stopRecording,
-              backgroundColor: const Color(0xFF55555B), // Grey background
+        Container(
+          decoration: BoxDecoration(
+            color: Color(0xFF253743),
+            borderRadius: BorderRadius.circular(197),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                GestureDetector(
+                  onTap: _stopRecording,
+                  child: Container(
+                      decoration: BoxDecoration(
+                          shape: BoxShape.circle, color: Color(0xFFD6B2FD)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(10.0),
+                        child: Icon(
+                          Icons.stop,
+                          color: Colors.white,
+                        ),
+                      )),
+                ),
+                SizedBox(width: 12),
+
+                Expanded(
+                  child: GestureDetector(
+                      onTap: _isRecordingPaused
+                          ? _resumeRecording
+                          : _pauseRecording,
+                      child: Container(
+                          decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(66),
+                              color: Color(0xFF531DAB)),
+                          child: Padding(
+                              padding: const EdgeInsets.all(10.0),
+                              child: Icon(
+                                _isRecordingPaused
+                                    ? Icons.play_arrow
+                                    : Icons.pause,
+                                color: Colors.white,
+                                size: 24,
+                              )))),
+                ),
+
+                SizedBox(width: 12),
+
+                GestureDetector(
+                  onTap: _deleteAudio,
+                  child: Container(
+                      decoration: BoxDecoration(
+                          shape: BoxShape.circle, color: Color(0xFFD6B2FD)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(10.0),
+                        child: Icon(
+                          Icons.delete,
+                          color: Colors.white,
+                        ),
+                      )),
+                ),
+                // Delete Button
+              ],
             ),
-            const SizedBox(width: 20),
-            // Pause/Resume Button (in the middle)
-            _buildIconButton(
-              icon: _isRecordingPaused ? Icons.play_arrow : Icons.pause,
-              onTap: _isRecordingPaused ? _resumeRecording : _pauseRecording,
-              backgroundColor: const Color(0xFF8A2BE2), // Purple background
-              size: 70, // Larger size for the middle button
-            ),
-            const SizedBox(width: 20),
-            // Delete Button
-            _buildIconButton(
-              icon: Icons.delete,
-              onTap: _deleteAudio,
-              backgroundColor: const Color(0xFF55555B), // Grey background
-            ),
-          ],
+          ),
         ),
       ],
     );

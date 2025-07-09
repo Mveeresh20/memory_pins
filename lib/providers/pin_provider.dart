@@ -261,9 +261,15 @@ class PinProvider with ChangeNotifier {
   // Filter pins by month
   List<Pin> filterPinsByMonth(List<Pin> pins, DateTime month) {
     return pins.where((pin) {
-      // You'll need to add timestamp to your Pin model
-      // For now, this is a placeholder
-      return true;
+      // If pin doesn't have createdAt, include it (for backward compatibility)
+      if (pin.createdAt == null) {
+        return true;
+      }
+
+      // Check if pin was created in the specified month and year
+      final pinCreatedAt = pin.createdAt!;
+      return pinCreatedAt.year == month.year &&
+          pinCreatedAt.month == month.month;
     }).toList();
   }
 

@@ -148,6 +148,9 @@ class FirebaseService {
             playsCount: pinData['plays'] ?? 0,
             description: pinData['description'] ?? '',
             audioUrls: List<String>.from(pinData['audioUrls'] ?? []),
+            createdAt: pinData['timestamp'] != null
+                ? DateTime.fromMillisecondsSinceEpoch(pinData['timestamp'])
+                : null,
           );
           nearbyPins.add(pin);
         }
@@ -207,6 +210,9 @@ class FirebaseService {
           playsCount: pinData['plays'] ?? 0,
           description: pinData['description'] ?? '',
           audioUrls: List<String>.from(pinData['audioUrls'] ?? []),
+          createdAt: pinData['timestamp'] != null
+              ? DateTime.fromMillisecondsSinceEpoch(pinData['timestamp'])
+              : null,
         );
 
         print('Created Pin object:');
@@ -228,17 +234,23 @@ class FirebaseService {
   Future<Pin?> getPinById(String pinId) async {
     try {
       final snapshot = await _pinsRef.child(pinId).get();
-      if (!snapshot.exists) return null;
+      if (!snapshot.exists) {
+        print('Pin not found with ID: $pinId');
+        return null;
+      }
+
       final pinData = snapshot.value as Map<dynamic, dynamic>;
+      print('Retrieved pin data for ID $pinId: $pinData');
+
       final pinLat = _toDouble(pinData['latitude']);
       final pinLng = _toDouble(pinData['longitude']);
-      return Pin(
 
+      return Pin(
         location: pinData['location'] ?? '',
         flagEmoji: pinData['mood'] ?? '📍',
         title: pinData['title'] ?? '',
         emoji: pinData['mood'] ?? '📍',
-        id: pinData['pinId'] ?? '',
+        id: pinId, // Use the passed pinId parameter, not from data
         latitude: pinLat,
         longitude: pinLng,
         imageUrl: (pinData['photoUrls'] as List<dynamic>?)?.isNotEmpty == true
@@ -252,9 +264,13 @@ class FirebaseService {
         playsCount: pinData['plays'] ?? 0,
         description: pinData['description'] ?? '',
         audioUrls: List<String>.from(pinData['audioUrls'] ?? []),
+        createdAt: pinData['timestamp'] != null
+            ? DateTime.fromMillisecondsSinceEpoch(pinData['timestamp'])
+            : null,
       );
     } catch (e) {
-      throw Exception('Failed to get pin: $e');
+      print('Error getting pin by ID $pinId: $e');
+      return null; // Return null instead of throwing to prevent crashes
     }
   }
 
@@ -452,20 +468,34 @@ class FirebaseService {
 
       final snapshot = await _usersRef.child(userId).child('savedPinIds').get();
 
-      if (!snapshot.exists) return [];
+      if (!snapshot.exists) {
+        print('No saved pins found for user: $userId');
+        return [];
+      }
 
+      print(
+          'Found ${snapshot.children.length} saved pin IDs for user: $userId');
       final List<Pin> savedPins = [];
 
       for (final child in snapshot.children) {
         final pinId = child.value as String?;
-        if (pinId != null) {
+        print('Processing saved pin ID: $pinId');
+
+        if (pinId != null && pinId.isNotEmpty) {
           final pin = await getPinById(pinId);
           if (pin != null) {
+            print(
+                'Successfully retrieved pin: ${pin.title} with ${pin.imageUrls.length} images');
             savedPins.add(pin);
+          } else {
+            print('Failed to retrieve pin with ID: $pinId');
           }
+        } else {
+          print('Invalid pin ID found: $pinId');
         }
       }
 
+      print('Returning ${savedPins.length} saved pins');
       return savedPins;
     } catch (e) {
       print('Error getting saved pins: $e');
@@ -541,6 +571,9 @@ class FirebaseService {
             playsCount: pinData['plays'] ?? 0,
             description: pinData['description'] ?? '',
             audioUrls: List<String>.from(pinData['audioUrls'] ?? []),
+            createdAt: pinData['timestamp'] != null
+                ? DateTime.fromMillisecondsSinceEpoch(pinData['timestamp'])
+                : null,
           );
           nearbyPins.add(pin);
         }

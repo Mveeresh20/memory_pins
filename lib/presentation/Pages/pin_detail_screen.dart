@@ -1,34 +1,84 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart' show GoogleFonts;
 import 'package:memory_pins_app/models/pin_detail.dart';
+import 'package:memory_pins_app/models/pin.dart';
 import 'package:memory_pins_app/presentation/Widgets/add_photo_grid_item.dart';
 import 'package:memory_pins_app/presentation/Widgets/audio_list_item.dart';
 import 'package:memory_pins_app/presentation/Widgets/photo_grid_item.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/label_text_style.dart';
-
-
+import 'package:memory_pins_app/providers/pin_provider.dart';
+import 'package:provider/provider.dart';
 
 // --- Data Models (for dynamic content) ---
 
-
 class PinDetailScreen extends StatefulWidget {
   final PinDetail pinDetail; // Pass the data to the screen
+  final Pin? originalPin; // Pass the original pin for saving
 
-  const PinDetailScreen({Key? key, required this.pinDetail}) : super(key: key);
+  const PinDetailScreen({
+    Key? key,
+    required this.pinDetail,
+    this.originalPin, // Make it optional for backward compatibility
+  }) : super(key: key);
 
   @override
   State<PinDetailScreen> createState() => _PinDetailScreenState();
 }
 
 class _PinDetailScreenState extends State<PinDetailScreen> {
-  // You might manage audio playback state here or in a separate provider
-  // e.g., AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isSaved = false; // Track if pin is saved
 
   @override
   void initState() {
     super.initState();
-    // Initialize audio player if needed
+    // Check if pin is already saved
+    _checkIfPinIsSaved();
+  }
+
+  void _checkIfPinIsSaved() async {
+    final pinProvider = Provider.of<PinProvider>(context, listen: false);
+    // Use the original pin ID if available, otherwise use title
+    final pinId = widget.originalPin?.id ?? widget.pinDetail.title;
+    final isSaved = await pinProvider.isPinSaved(pinId);
+    if (mounted) {
+      setState(() {
+        _isSaved = isSaved;
+      });
+    }
+  }
+
+  void _toggleSave() {
+    final pinProvider = Provider.of<PinProvider>(context, listen: false);
+
+    setState(() {
+      _isSaved = !_isSaved;
+    });
+
+    // Use the original pin ID if available, otherwise use title
+    final pinId = widget.originalPin?.id ?? widget.pinDetail.title;
+
+    if (_isSaved) {
+      // Save the pin
+      pinProvider.savePin(pinId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Pin saved!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } else {
+      // Unsave the pin
+      pinProvider.unsavePin(pinId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Pin removed from saved'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   @override
@@ -40,8 +90,8 @@ class _PinDetailScreenState extends State<PinDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:Color(0xFF253743), // Dark background
-   
+      backgroundColor: Color(0xFF253743), // Dark background
+
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
@@ -51,7 +101,6 @@ class _PinDetailScreenState extends State<PinDetailScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-
                   Text(
                     '📍Title: ${widget.pinDetail.title}',
                     style: GoogleFonts.nunitoSans(
@@ -60,44 +109,49 @@ class _PinDetailScreenState extends State<PinDetailScreen> {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-
-                  Icon(Icons.bookmark_border_rounded, color: Colors.white, size: 20),
-
+                  GestureDetector(
+                    onTap: _toggleSave,
+                    child: Icon(
+                      _isSaved ? Icons.bookmark : Icons.bookmark_border_rounded,
+                      color: _isSaved ? Colors.white : Colors.white,
+                      size: 20,
+                    ),
+                  ),
                 ],
               ),
 
-  
-              
-              
               // --- Pin Title ---
-             
-                // Center(
-                //   child: Text(
-                //     '📍Title: ${widget.pinDetail.title}',
-                //     style: GoogleFonts.nunitoSans(
-                //       color: Colors.white,
-                //       fontSize: 14,
-                //       fontWeight: FontWeight.w900,
-                //     ),
-                //   ),
-                // ),
+
+              // Center(
+              //   child: Text(
+              //     '📍Title: ${widget.pinDetail.title}',
+              //     style: GoogleFonts.nunitoSans(
+              //       color: Colors.white,
+              //       fontSize: 14,
+              //       fontWeight: FontWeight.w900,
+              //     ),
+              //   ),
+              // ),
               const SizedBox(height: 24),
-        
+
               // --- Quote/Description Section ---
               Stack(
                 children: [
                   Positioned(
                     top: 0,
                     left: 0,
-                    child: Icon(Icons.format_quote, color: Colors.white, size:20),
+                    child:
+                        Icon(Icons.format_quote, color: Colors.white, size: 20),
                   ),
                   Positioned(
                     bottom: 0,
                     right: 0,
-                    child: Icon(Icons.format_quote, color: Colors.white, size: 20),
+                    child:
+                        Icon(Icons.format_quote, color: Colors.white, size: 20),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24.0, vertical: 8.0),
                     child: Text(
                       widget.pinDetail.description,
                       style: text14W500White(context),
@@ -106,9 +160,9 @@ class _PinDetailScreenState extends State<PinDetailScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-        
+
               // --- Audios Section ---
-               Text(
+              Text(
                 textAlign: TextAlign.left,
                 'Audios',
                 style: text18W700White(context),
@@ -117,7 +171,8 @@ class _PinDetailScreenState extends State<PinDetailScreen> {
               ListView.separated(
                 separatorBuilder: (context, index) => SizedBox(height: 16),
                 shrinkWrap: true, // Important for nested list views
-                physics:  NeverScrollableScrollPhysics(), // Disable scrolling of inner list
+                physics:
+                    NeverScrollableScrollPhysics(), // Disable scrolling of inner list
                 itemCount: widget.pinDetail.audios.length,
                 itemBuilder: (context, index) {
                   final audio = widget.pinDetail.audios[index];
@@ -125,9 +180,9 @@ class _PinDetailScreenState extends State<PinDetailScreen> {
                 },
               ),
               const SizedBox(height: 30),
-        
+
               // --- Photos Section ---
-               Text(
+              Text(
                 'Photos',
                 style: text18W700White(context),
               ),
@@ -141,7 +196,8 @@ class _PinDetailScreenState extends State<PinDetailScreen> {
                   mainAxisSpacing: 16,
                   childAspectRatio: 1.0, // Square items
                 ),
-                itemCount: widget.pinDetail.photos.length + 1, // +1 for the "add new photo" button
+                itemCount: widget.pinDetail.photos.length +
+                    1, // +1 for the "add new photo" button
                 itemBuilder: (context, index) {
                   if (index < widget.pinDetail.photos.length) {
                     final photo = widget.pinDetail.photos[index];
