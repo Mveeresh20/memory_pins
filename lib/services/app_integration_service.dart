@@ -83,6 +83,9 @@ class AppIntegrationService {
     required String mood,
     required List<File> imageFiles,
     required List<String> pinIds,
+    List<String>? emojis,
+    double? latitude, // Add latitude parameter
+    double? longitude, // Add longitude parameter
   }) async {
     try {
       final tapuProvider = context.read<TapuProvider>();
@@ -97,6 +100,9 @@ class AppIntegrationService {
         mood: mood,
         photoUrls: imageUrls,
         pinIds: pinIds,
+        emojis: emojis ?? [mood], // Use provided emojis or fallback to mood
+        latitude: latitude, // Pass latitude
+        longitude: longitude, // Pass longitude
       );
 
       return success;
@@ -366,5 +372,20 @@ class AppIntegrationService {
         backgroundColor: Colors.green,
       ),
     );
+  }
+
+  /// Load pins around a specific tapu center
+  Future<List<Pin>> loadPinsAroundTapu(BuildContext context, Tapus tapu) async {
+    try {
+      return await context.read<TapuProvider>().loadPinsAroundTapu(tapu);
+    } catch (e) {
+      print('Error loading pins around tapu: $e');
+      return [];
+    }
+  }
+
+  /// Get distance from tapu center to a pin
+  String getPinDistanceFromTapu(BuildContext context, Tapus tapu, Pin pin) {
+    return context.read<TapuProvider>().getPinDistanceFromTapu(tapu, pin);
   }
 }

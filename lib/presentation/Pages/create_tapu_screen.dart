@@ -19,6 +19,12 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:record/record.dart';
+import 'package:memory_pins_app/providers/tapu_provider.dart';
+import 'package:memory_pins_app/models/tapu.dart';
+import 'package:memory_pins_app/models/tapus.dart';
+import 'package:memory_pins_app/models/map_coordinates.dart';
+import 'package:memory_pins_app/services/app_integration_service.dart';
+import 'package:geocoding/geocoding.dart';
 
 class CreateTapuScreen extends StatefulWidget {
   const CreateTapuScreen({super.key});
@@ -28,7 +34,6 @@ class CreateTapuScreen extends StatefulWidget {
 }
 
 class _CreateTapuScreenState extends State<CreateTapuScreen> {
-  File? _selectedImage;
   Map<String, dynamic> _location = {};
 
   bool isEdit = false;
@@ -42,6 +47,9 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
   String _errorMessage = '';
   String? _imageUrl;
   String? eventId;
+
+  // App integration service
+  final AppIntegrationService _appService = AppIntegrationService();
   // Form controllers
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -84,13 +92,19 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
   ];
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? pickedFile =
+          await picker.pickImage(source: ImageSource.gallery);
 
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      print('Error picking image: $e');
+      _showSnackBar('Failed to pick image.');
     }
   }
 
@@ -359,6 +373,9 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
                       if (mounted) {
                         setState(() {
                           _location = location;
+                          // Update the coordinates for Tapu creation
+                          _currentLatitude = location['latitude'] as double;
+                          _currentLongitude = location['longitude'] as double;
                           _currentLocationAddress =
                               locationData?['displayName'] as String? ??
                                   location['address'] as String? ??
@@ -424,8 +441,8 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
   final TextEditingController _messageController = TextEditingController();
 
   // --- State Variables ---
-  String? _selectedMoodIconUrl;
-  List<File> _selectedImageFiles = []; // Changed to File for actual images
+  List<String> _selectedEmojis = []; // Multiple emojis for tapu
+  File? _selectedImage; // Single image for tapu banner
   String? _recordedAudioFilePath; // Actual path to recorded audio file
 
   // --- Location Variables ---
@@ -571,70 +588,72 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
     }
   }
 
-  // --- Image Picking Functions ---
-  Future<void> _addPhoto() async {
-    try {
-      final ImagePicker picker = ImagePicker();
-      final List<XFile>? images = await picker.pickMultiImage();
-
-      if (images != null && images.isNotEmpty) {
-        setState(() {
-          _selectedImageFiles.addAll(
-            images.map((xFile) => File(xFile.path)).toList(),
-          );
-        });
-      }
-    } catch (e) {
-      print('Error picking images: $e');
-      _showSnackBar('Failed to pick images.');
-    }
-  }
-
-  void _removePhoto(int index) {
-    setState(() {
-      _selectedImageFiles.removeAt(index);
-    });
-  }
-
   // --- Post Pin Logic ---
-  void _postPin() {
+  void _postPin() async {
     final String title = _pinTitleController.text.trim();
     final String message = _messageController.text.trim();
 
     if (title.isEmpty) {
-      _showSnackBar('Please enter a Pin Title');
+      _showSnackBar('Please enter a Tapu Title');
       return;
     }
-    if (_selectedMoodIconUrl == null) {
-      _showSnackBar('Please select a Mood');
+    if (_selectedEmojis.isEmpty) {
+      _showSnackBar('Please select at least one Mood');
       return;
     }
     if (_currentLatitude == null || _currentLongitude == null) {
       _showSnackBar('Please wait for location to be fetched or try again.');
       return;
     }
-    if (_selectedImageFiles.isEmpty) {
-      _showSnackBar('Please add at least one photo.');
+    if (_selectedImage == null) {
+      _showSnackBar('Please add a Tapu banner image.');
       return;
     }
-    // You can add more validation for audio if it's mandatory
 
-    final newPin = TapuCreate(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      latitude: _currentLatitude!,
-      longitude: _currentLongitude!,
-      imageUrl: _selectedImageFiles
-          .first.path, // Use the path of the first selected image
-      moodIconUrl: _selectedMoodIconUrl!,
-      title: title,
-      // You might extend Pin model to include message, all image paths, audio path
-      // e.g., 'allImagePaths': _selectedImageFiles.map((f) => f.path).toList(),
-      // 'audioPath': _recordedAudioFilePath,
-      // 'message': message,
-    );
+    setState(() {
+      _isLoading = true;
+    });
 
-    Navigator.pop(context, newPin);
-    _showSnackBar('Pin Posted: ${newPin.title}');
+    try {
+      // Debug: Print the location coordinates being used
+      print('Creating Tapu with location:');
+      print('  Latitude: $_currentLatitude');
+      print('  Longitude: $_currentLongitude');
+      print('  Address: $_currentLocationAddress');
+
+      // Create tapu with media uploads using integration service
+      final success = await _appService.createTapuWithMedia(
+        context: context,
+        title: title,
+        description: message,
+        mood: _selectedEmojis.first, // Use first emoji as primary mood
+        imageFiles: [_selectedImage!],
+        pinIds: [], // Will be populated with nearby pins later
+        emojis: _selectedEmojis, // Pass all selected emojis
+        latitude: _currentLatitude, // Pass the selected location latitude
+        longitude: _currentLongitude, // Pass the selected location longitude
+      );
+
+      if (success) {
+        _showSnackBar('Tapu created successfully!');
+
+        // Refresh the tapu data before navigating back
+        final tapuProvider = Provider.of<TapuProvider>(context, listen: false);
+        await tapuProvider.loadUserTapus();
+
+        // Navigate back to previous screen
+        Navigator.pop(context);
+      } else {
+        _showSnackBar('Failed to create Tapu. Please try again.');
+      }
+    } catch (e) {
+      print('Error creating Tapu: $e');
+      _showSnackBar('Error creating Tapu: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   String _formatDuration(Duration duration) {
@@ -741,32 +760,26 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         child: Center(
-                        
                           child: GestureDetector(
                             onTap: _pickImage,
                             child: CustomPaint(
                               painter:
                                   DottedCirclePainter(), // Draws the dotted circular border
                               child: SizedBox(
-                                width:
-                                    100, 
+                                width: 100,
                                 height: 100,
                                 child: Center(
-                                  
                                   child: _selectedImage == null
                                       ? Image.asset(
                                           "assets/icons/camera.png",
                                           height: 40,
                                         )
                                       : ClipOval(
-                                          
                                           child: Image.file(
-                                            _selectedImage!, // Displays the selected image file
-                                            width:
-                                                150, 
+                                            _selectedImage!, // Displays the selected image
+                                            width: 150,
                                             height: 150,
-                                            fit: BoxFit
-                                                .cover, 
+                                            fit: BoxFit.cover,
                                           ),
                                         ),
                                 ),
@@ -789,13 +802,17 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
                         return GestureDetector(
                           onTap: () {
                             setState(() {
-                              _selectedMoodIconUrl = url;
+                              if (_selectedEmojis.contains(url)) {
+                                _selectedEmojis.remove(url);
+                              } else {
+                                _selectedEmojis.add(url);
+                              }
                             });
                           },
                           child: Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: _selectedMoodIconUrl == url
+                              color: _selectedEmojis.contains(url)
                                   ? Color(0xFF531DAB)
                                   : Colors.white,
                             ),
@@ -868,27 +885,34 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 0, vertical: 16),
-                      child: Container(
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                              color: AppColors.bgGroundYellow,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                  color: AppColors.borderColor1, width: 1),
-                              boxShadow: [
-                                AppColors.backShadow,
-                              ]),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 15),
-                            child: Center(
-                                child: Text(
-                              "Create Tapu",
-                              style: GoogleFonts.nunitoSans(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.black),
+                      child: GestureDetector(
+                        onTap: _isLoading ? null : _postPin,
+                        child: Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                                color: AppColors.bgGroundYellow,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                    color: AppColors.borderColor1, width: 1),
+                                boxShadow: [
+                                  AppColors.backShadow,
+                                ]),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                              child: Center(
+                                  child: _isLoading
+                                      ? const CircularProgressIndicator(
+                                          color: Colors.black,
+                                        )
+                                      : Text(
+                                          "Create Tapu",
+                                          style: GoogleFonts.nunitoSans(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.black),
+                                        )),
                             )),
-                          )),
+                      ),
                     ) // Pushes the next content to the bottom
                   ]),
             ),

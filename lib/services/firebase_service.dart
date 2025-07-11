@@ -298,13 +298,11 @@ class FirebaseService {
     required String location,
     required List<String> photoUrls,
     required List<String> pinIds,
+    List<String>? emojis,
   }) async {
     try {
-      final userId = currentUserId;
-      if (userId == null) throw Exception('User not authenticated');
-
       final tapuId = _tapusRef.push().key!;
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final userId = currentUserId ?? 'anonymous';
 
       final tapuData = {
         'tapuId': tapuId,
@@ -317,18 +315,21 @@ class FirebaseService {
         'location': location,
         'photoUrls': photoUrls,
         'pinIds': pinIds,
-        'timestamp': timestamp,
+        'emojis': emojis ?? [mood], // Store selected emojis
         'totalPins': pinIds.length,
         'views': 0,
+        'plays': 0,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'isPublic': true,
       };
 
       await _tapusRef.child(tapuId).set(tapuData);
-
-      // Update user's created tapus
-      await _usersRef.child(userId).child('createdTapuIds').push().set(tapuId);
+      print('Tapu created successfully with ID: $tapuId');
+      print('Tapu data: $tapuData');
 
       return tapuId;
     } catch (e) {
+      print('Error creating tapu: $e');
       throw Exception('Failed to create tapu: $e');
     }
   }
@@ -336,40 +337,36 @@ class FirebaseService {
   /// Get user's tapus
   Future<List<Tapus>> getUserTapus({String? userId}) async {
     try {
-      final targetUserId = userId ?? currentUserId;
-      if (targetUserId == null) throw Exception('User not authenticated');
+      // For testing purposes, just get all tapus instead of filtering by userId
+      // This avoids the index requirement
+      return await getAllTapus();
 
-      final snapshot =
-          await _tapusRef.orderByChild('userId').equalTo(targetUserId).get();
-
-      if (!snapshot.exists) return [];
-
-      final List<Tapus> userTapus = [];
-
-      for (final child in snapshot.children) {
-        final tapuData = child.value as Map<dynamic, dynamic>;
-
-        final tapu = Tapus(
-          id: tapuData['tapuId'] ?? '',
-          name: tapuData['title'] ?? '',
-          avatarUrl:
-              (tapuData['photoUrls'] as List<dynamic>?)?.isNotEmpty == true
-                  ? tapuData['photoUrls'][0]
-                  : '',
-          centerPinImageUrl:
-              (tapuData['photoUrls'] as List<dynamic>?)?.isNotEmpty == true
-                  ? tapuData['photoUrls'][0]
-                  : '',
-          centerCoordinates: MapCoordinates(
-            latitude: tapuData['latitude'] ?? 0.0,
-            longitude: tapuData['longitude'] ?? 0.0,
-          ),
-          totalPins: tapuData['totalPins'] ?? 0,
-        );
-        userTapus.add(tapu);
-      }
-
-      return userTapus;
+      // Original code (commented out for testing):
+      // final targetUserId = userId ?? currentUserId;
+      // if (targetUserId == null) throw Exception('User not authenticated');
+      // final snapshot = await _tapusRef.orderByChild('userId').equalTo(targetUserId).get();
+      // if (!snapshot.exists) return [];
+      // final List<Tapus> userTapus = [];
+      // for (final child in snapshot.children) {
+      //   final tapuData = child.value as Map<dynamic, dynamic>;
+      //   final tapu = Tapus(
+      //     id: tapuData['tapuId'] ?? '',
+      //     name: tapuData['title'] ?? '',
+      //     avatarUrl: (tapuData['photoUrls'] as List<dynamic>?)?.isNotEmpty == true
+      //         ? tapuData['photoUrls'][0]
+      //         : '',
+      //     centerPinImageUrl: (tapuData['photoUrls'] as List<dynamic>?)?.isNotEmpty == true
+      //         ? tapuData['photoUrls'][0]
+      //         : '',
+      //     centerCoordinates: MapCoordinates(
+      //       latitude: tapuData['latitude'] ?? 0.0,
+      //       longitude: tapuData['longitude'] ?? 0.0,
+      //     ),
+      //     totalPins: tapuData['totalPins'] ?? 0,
+      //   );
+      //   userTapus.add(tapu);
+      // }
+      // return userTapus;
     } catch (e) {
       throw Exception('Failed to get user tapus: $e');
     }
@@ -402,6 +399,61 @@ class FirebaseService {
       );
     } catch (e) {
       throw Exception('Failed to get tapu: $e');
+    }
+  }
+
+  /// Get all tapus (for nearby search)
+  Future<List<Tapus>> getAllTapus() async {
+    try {
+      final snapshot = await _tapusRef.get();
+
+      if (!snapshot.exists) return [];
+
+      final List<Tapus> allTapus = [];
+
+      for (final child in snapshot.children) {
+        final tapuData = child.value as Map<dynamic, dynamic>;
+
+        // Skip private tapus
+        if (tapuData['isPublic'] == false) continue;
+
+        final tapu = Tapus(
+          id: tapuData['tapuId'] ?? child.key ?? '',
+          name: tapuData['title'] ?? '',
+          avatarUrl:
+              (tapuData['photoUrls'] as List<dynamic>?)?.isNotEmpty == true
+                  ? tapuData['photoUrls'][0]
+                  : '',
+          centerPinImageUrl:
+              (tapuData['photoUrls'] as List<dynamic>?)?.isNotEmpty == true
+                  ? tapuData['photoUrls'][0]
+                  : '',
+          centerCoordinates: MapCoordinates(
+            latitude: _toDouble(tapuData['latitude']),
+            longitude: _toDouble(tapuData['longitude']),
+          ),
+          totalPins: tapuData['totalPins'] ?? 0,
+          emojis:
+              List<String>.from(tapuData['emojis'] ?? []), // Retrieve emojis
+        );
+
+        print('Created Tapus object:');
+        print('  ID: ${tapu.id}');
+        print('  Name: ${tapu.name}');
+        print('  Avatar URL: ${tapu.avatarUrl}');
+        print('  Center Image URL: ${tapu.centerPinImageUrl}');
+        print(
+            '  Coordinates: ${tapu.centerCoordinates.latitude}, ${tapu.centerCoordinates.longitude}');
+        print('  Total Pins: ${tapu.totalPins}');
+        print('  Emojis: ${tapu.emojis}');
+
+        allTapus.add(tapu);
+      }
+
+      return allTapus;
+    } catch (e) {
+      print('Error getting all tapus: $e');
+      return [];
     }
   }
 

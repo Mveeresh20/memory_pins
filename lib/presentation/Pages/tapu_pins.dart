@@ -17,6 +17,7 @@ class _TapuPinsState extends State<TapuPins> {
 
   final List<TapuPinsItem> _allPins = [
     TapuPinsItem(
+      id: '1',
       location: 'New Jersey',
       // Example flag emoji
       title: 'Rainy Window Seat',
@@ -34,6 +35,8 @@ class _TapuPinsState extends State<TapuPins> {
       playsCount: 12,
     ),
     TapuPinsItem(
+      id: '2',
+
       location: 'Washington DC',
       flagEmoji: '🇺🇸',
       title: 'Sunset Goodbye',
@@ -50,6 +53,8 @@ class _TapuPinsState extends State<TapuPins> {
       playsCount: 5,
     ),
     TapuPinsItem(
+      id: '3',
+
       location:
           'Inter Milan', // Assuming this is a place, not the football club
 

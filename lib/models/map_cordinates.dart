@@ -78,6 +78,7 @@ class MapDetailCardData {
   final int audioCount;
   final List<String> reactionEmojis;
   final int viewsCount;
+  final int playsCount;
 
   MapDetailCardData({
     required this.distance,
@@ -88,6 +89,7 @@ class MapDetailCardData {
     required this.audioCount,
     required this.reactionEmojis,
     required this.viewsCount,
+    required this.playsCount,
   });
 
   factory MapDetailCardData.fromJson(Map<String, dynamic> json) {
@@ -100,6 +102,7 @@ class MapDetailCardData {
       audioCount: json['audioCount'] as int,
       reactionEmojis: List<String>.from(json['reactionEmojis'] as List),
       viewsCount: json['viewsCount'] as int,
+      playsCount: json['playsCount'] as int,
     );
   }
   Map<String, dynamic> toJson() => {
@@ -111,16 +114,18 @@ class MapDetailCardData {
     'audioCount': audioCount,
     'reactionEmojis': reactionEmojis,
     'viewsCount': viewsCount,
+    'playsCount': playsCount,
   };
 }
 
 // Main data model for the entire screen state
 class MapScreenData {
   final String currentMapName; // e.g., "Tapu's"
-  final String zoomLevelText; // e.g., "52 x 52"
+  final String zoomLevelText; // e.g., "52 x 52"final width = MediaQuery.of(context).size.width;
   final List<UserAvatar> userAvatars;
   final List<MapItem> mapItems;
-  final List<MapDetailCardData> detailCards; // All possible detail cards
+  final List<MapDetailCardData> detailCards;
+   // All possible detail cards
 
   MapScreenData({
     required this.currentMapName,

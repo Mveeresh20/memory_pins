@@ -1,6 +1,30 @@
 {
     "rules": {
-        ".read": "auth != null",
-        ".write": "auth != null"
+        ".read": true,
+        ".write": true,
+        "pins": {
+            ".indexOn": [
+                "userId",
+                "latitude",
+                "longitude"
+            ]
+        },
+        "tapus": {
+            ".indexOn": [
+                "userId",
+                "latitude",
+                "longitude"
+            ]
+        },
+        "users": {
+            ".indexOn": [
+                "userId"
+            ]
+        },
+        "saved_pins": {
+            ".indexOn": [
+                "userId"
+            ]
+        }
     }
 }

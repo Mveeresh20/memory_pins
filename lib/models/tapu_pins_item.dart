@@ -1,6 +1,7 @@
 // models/pin_item.dart
 
 class TapuPinsItem {
+  final String id;
   final String location;
   final String? flagEmoji; // Using emoji for simplicity, could be asset path
   final String title;
@@ -12,6 +13,7 @@ class TapuPinsItem {
   final int playsCount;
 
   TapuPinsItem({
+    required this.id,
     required this.location,
     this.flagEmoji,
     required this.title,
@@ -26,6 +28,7 @@ class TapuPinsItem {
   // Example factory constructor for converting from a JSON-like map (e.g., from an API)
   factory TapuPinsItem.fromJson(Map<String, dynamic> json) {
     return TapuPinsItem(
+      id: json['id'] as String,
       location: json['location'] as String,
       flagEmoji: json['flagEmoji'] as String?,
       title: json['title'] as String,
@@ -41,6 +44,7 @@ class TapuPinsItem {
   // Example method to convert to JSON-like map
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'location': location,
       'flagEmoji': flagEmoji,
       'title': title,
