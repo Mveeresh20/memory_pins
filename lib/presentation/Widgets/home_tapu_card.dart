@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:memory_pins_app/models/home_tapu_card_data.dart';
+import 'package:memory_pins_app/presentation/Pages/tapu_pins.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
@@ -9,12 +10,10 @@ import 'package:memory_pins_app/utills/Constants/label_text_style.dart'; // Assu
 
 class HomeTapuCard extends StatelessWidget {
   final HomeTapuCardData data;
-  // final VoidCallback onViewTapu; // ఈ కాల్‌బ్యాక్ ఇప్పుడు అవసరం లేదు
 
   const HomeTapuCard({
     Key? key,
     required this.data,
-    // required this.onViewTapu, // దీన్ని తీసివేశాం
   }) : super(key: key);
 
   @override
@@ -34,54 +33,84 @@ class HomeTapuCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                Image.network(Images.mapMarketImg, height: 16),
-                Text(
-                  data.locationName,
-                  style: text14W400White(context),
-                )
-              ],
-            ),
-          ),
-
-          
-          // --- Main Image Section ---
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(8), bottom: Radius.circular(40)),
-            child: Image.network(
-              data.mainImageUrl,
-              height: 220, // Fixed height for the main image
-              width: double.infinity,
-              fit: BoxFit.cover,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Container(
-                  height: 220,
-                  color: Colors.grey[800],
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded /
-                              loadingProgress.expectedTotalBytes!
-                          : null,
-                      color: Colors.white,
+          // --- Main Image Section with Location Overlay ---
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(8), bottom: Radius.circular(40)),
+                child: Image.network(
+                  data.mainImageUrl,
+                  height: 220, // Fixed height for the main image
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      height: 220,
+                      color: Colors.grey[800],
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                          color: Colors.white,
+                        ),
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    height: 200,
+                    color: Colors.grey[800],
+                    child: const Center(
+                      child: Icon(Icons.broken_image,
+                          color: Colors.grey, size: 50),
                     ),
                   ),
-                );
-              },
-              errorBuilder: (context, error, stackTrace) => Container(
-                height: 200,
-                color: Colors.grey[800],
-                child: const Center(
-                  child: Icon(Icons.broken_image, color: Colors.grey, size: 50),
                 ),
               ),
-            ),
+              // Location overlay at top-left
+              Positioned(
+                top: 12,
+                left: 12,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.black.withOpacity(0.06),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(2, 12),
+                        ),
+                      ]),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.network(Images.mapMarketImg, height: 14),
+                      SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          data.locationName,
+                          style: GoogleFonts.nunitoSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 16),
@@ -158,7 +187,7 @@ class HomeTapuCard extends StatelessWidget {
                               ))),
                           const SizedBox(width: 4.0),
                           Text(
-                            '${data.pinCount} Photos', // Changed to Photos as seen in screenshots
+                            '${data.pinCount} Pins', // Changed to Photos as seen in screenshots
                             style: text14W600White(
                                 context), // Assuming white text style
                           ),
@@ -232,23 +261,30 @@ class HomeTapuCard extends StatelessWidget {
             ),
           ),
 
-          
           // Tapu Name & Pin Icon Overlay
 
           // Preview Images Horizontal List
 
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16,vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: GestureDetector(
               onTap: () {
-                NavigationService.pushNamed('/tapu-pins');
+                // Navigate to Tapu Pins with the original Tapus data
+                if (data.originalTapus != null) {
+                  NavigationService.pushNamed('/tapu-pins',
+                      arguments: data.originalTapus);
+                } else {
+                  // Fallback to named route if no Tapus data
+                  NavigationService.pushNamed('/tapu-pins');
+                }
               },
               child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
                       color: AppColors.bgGroundYellow,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.borderColor1, width: 1),
+                      border:
+                          Border.all(color: AppColors.borderColor1, width: 1),
                       boxShadow: [
                         AppColors.backShadow,
                       ]),

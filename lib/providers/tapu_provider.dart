@@ -536,7 +536,7 @@ class TapuProvider with ChangeNotifier {
     print('  Tapu location: ${tapu.latitude}, ${tapu.longitude}');
     print('  Raw distance: ${distanceInKm.toStringAsFixed(3)}km');
     print('  Formatted distance: $formattedDistance');
-    return '$formattedDistance away';
+    return '$formattedDistance from central location';
   }
 
   Map<String, double> calculateTapuCenter(List<Pin> pins) {
@@ -556,6 +556,53 @@ class TapuProvider with ChangeNotifier {
       'latitude': totalLat / pins.length,
       'longitude': totalLng / pins.length,
     };
+  }
+
+  // Get detailed statistics for a Tapus by loading its pins
+  Future<Map<String, dynamic>> getTapusDetailedStatistics(Tapus tapus) async {
+    try {
+      // Load pins around the tapus
+      final pins = await loadPinsAroundTapu(tapus);
+
+      // Calculate statistics from pins
+      int totalImages = 0;
+      int totalAudios = 0;
+      int totalViews = 0;
+      int totalPlays = 0;
+
+      for (final pin in pins) {
+        totalImages += pin.photoCount;
+        totalAudios += pin.audioCount;
+        totalViews += pin.viewsCount;
+        totalPlays += pin.playsCount;
+      }
+
+      print('Tapus "${tapus.name}" detailed statistics:');
+      print('  Total pins: ${pins.length}');
+      print('  Total images: $totalImages');
+      print('  Total audios: $totalAudios');
+      print('  Total views: $totalViews');
+      print('  Total plays: $totalPlays');
+
+      return {
+        'totalPins': pins.length,
+        'totalImages': totalImages,
+        'totalAudios': totalAudios,
+        'totalViews': totalViews,
+        'totalPlays': totalPlays,
+        'pins': pins,
+      };
+    } catch (e) {
+      print('Error getting detailed statistics for tapus: $e');
+      return {
+        'totalPins': 0,
+        'totalImages': 0,
+        'totalAudios': 0,
+        'totalViews': 0,
+        'totalPlays': 0,
+        'pins': [],
+      };
+    }
   }
 
   // Get tapu statistics

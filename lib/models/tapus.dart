@@ -11,6 +11,7 @@ class Tapus {
       centerCoordinates; // The coordinates of this Tapu on the main map
   final int totalPins; // Total number of associated attachments
   final List<String> emojis; // Selected emojis from Create Tapu Screen
+  final String location; // Location name (e.g., "New York, NY")
 
   Tapus({
     required this.id,
@@ -20,6 +21,7 @@ class Tapus {
     required this.centerCoordinates,
     required this.totalPins,
     this.emojis = const [], // Default to empty list
+    this.location = '', // Default to empty string
   });
 
   factory Tapus.fromJson(Map<String, dynamic> json) {
@@ -31,6 +33,7 @@ class Tapus {
       centerCoordinates: MapCoordinates.fromJson(json['centerCoordinates']),
       totalPins: json['totalPins'] as int,
       emojis: List<String>.from(json['emojis'] ?? []),
+      location: json['location'] as String,
     );
   }
 
@@ -42,5 +45,6 @@ class Tapus {
         'centerCoordinates': centerCoordinates.toJson(),
         'totalPins': totalPins,
         'emojis': emojis,
+        'location': location,
       };
 }

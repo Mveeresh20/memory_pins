@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:memory_pins_app/aws/aws_fields.dart' as AppConstant;
 import 'package:memory_pins_app/aws/image_compresion.dart';
+import 'package:memory_pins_app/utills/Constants/imageType.dart';
 
 import 'package:path/path.dart'; // For extracting the file name
 import 'package:http/http.dart' as http;
@@ -26,6 +27,7 @@ class ImagePickerUtil {
     BuildContext context,
     Function(String) onUploadSuccess, // Pass callback for success
     Function(String) onUploadFailure,
+    {ImageType imageType = ImageType.profile}
   ) {
     showModalBottomSheet(
       context: context,

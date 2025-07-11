@@ -1,8 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:memory_pins_app/services/edit_profile_provider.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
+import 'package:memory_pins_app/utills/Constants/imageType.dart';
+import 'package:memory_pins_app/utills/Constants/image_picker_util.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/label_text_style.dart';
+import 'package:provider/provider.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -18,6 +24,48 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   final _formKey = GlobalKey<FormState>();
 
+  File? _imageFile;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    final provider = Provider.of<EditProfileProvider>(context, listen: false);
+    await provider.fetchUserProfileDetails();
+    setState(() {
+      _nameController.text = provider.profileDetails?.userName ?? '';
+      _emailController.text = provider.profileDetails?.email ?? '';
+      // Add fallback for mobile number - show empty string if null
+      _phoneController.text = provider.profileDetails?.mobileNumber ?? '+91 xxxxxxx';
+    });
+  }
+
+  Future<void> _pickImage() async {
+    final provider = Provider.of<EditProfileProvider>(context, listen: false);
+
+    ImagePickerUtil().showImageSourceSelection(
+      context,
+      (String imagePath) async {
+        // Success callback
+        await provider.updateUserProfile(imagePath, context);
+        setState(() {
+          _imageFile =
+              null; // Clear local file since we're using the uploaded path
+        });
+      },
+      (String error) {
+        // Error callback
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error)));
+      },
+      imageType: ImageType.profile,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -28,7 +76,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
             key: _formKey,
             child: Column(children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16).copyWith(top: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16)
+                    .copyWith(top: 16),
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
@@ -82,7 +131,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 child: Stack(
                   children: [
                     GestureDetector(
-                      onTap: () {},
+                      onTap: () {
+                        _pickImage();
+                      },
                       child: Container(
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
@@ -92,18 +143,26 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           ),
                         ),
                         child: ClipOval(
-                            child: Image.network(
-                          Images.profilePageImg,
-                          fit: BoxFit.cover,
-                          height: 120,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Image.network(
-                              Images.profilePageImg,
-                              fit: BoxFit.cover,
-                              height: 120,
-                            );
-                          },
-                        )),
+                          child: Consumer<EditProfileProvider>(
+                            builder: (context, provider, child) {
+                              final imageUrl = provider.getProfileImageUrl();
+                              return Image.network(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                                height: 80,
+                                width: 80,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Image.network(
+                                    Images.profile,
+                                    fit: BoxFit.cover,
+                                    height: 80,
+                                    width: 80,
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ),
                       ),
                     ),
                     Positioned(
@@ -124,24 +183,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
               ),
               SizedBox(height: 24),
-          
               Container(
                 width: double.infinity,
                 constraints: BoxConstraints(
                   minHeight: MediaQuery.of(context).size.height,
                 ),
-                
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(24),
                   color: Color(0xFF1D2B36),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16).copyWith(top: 30),
+                  padding: const EdgeInsets.symmetric(horizontal: 16)
+                      .copyWith(top: 30),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  
-                  
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -214,6 +270,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             child: TextField(
                               style: text14W600White(context),
                               controller: _phoneController,
+                              keyboardType: TextInputType.phone,
                               decoration: InputDecoration(
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.all(8),
@@ -224,41 +281,89 @@ class _EditProfilePageState extends State<EditProfilePage> {
                           )
                         ],
                       ),
-                  SizedBox(height: 70),
-                  Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          gradient: LinearGradient(
-                            colors: [
-                              Color(0xFFF5C253),
-                              Color(0xFFEBA145),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Center(
-                            child: Text(
-                          "Save Deatils",
-                          style: GoogleFonts.nunitoSans(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black),
-                        )),
-                      ))
-                  
-                  
+                      SizedBox(height: 70),
+
+                      Container(
+                        width: double.infinity,
+                        child: Consumer<EditProfileProvider>(
+                          builder: (context, provider, child) {
+                            return ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFFCC29),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(60),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                              ),
+                              onPressed: provider.isLoading
+                                  ? null
+                                  : () async {
+                                      await provider.updateUserNameAndEmail(
+                                        _nameController.text,
+                                        _emailController.text,
+                                        _phoneController.text,
+                                        context,
+                                      );
+                                    },
+                              child: provider.isLoading
+                                  ? CircularProgressIndicator()
+                                  : Center(
+                                      child: Text(
+                                        "Update Details",
+                                        style: GoogleFonts.nunitoSans(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      // Container(
+                      //     width: double.infinity,
+                      //     decoration: BoxDecoration(
+                      //         borderRadius: BorderRadius.circular(12),
+                      //         gradient: LinearGradient(
+                      //           colors: [
+                      //             Color(0xFFF5C253),
+                      //             Color(0xFFEBA145),
+                      //           ],
+                      //           begin: Alignment.topLeft,
+                      //           end: Alignment.bottomRight,
+                      //         )),
+                      //     child: Padding(
+                      //       padding: const EdgeInsets.symmetric(vertical: 16),
+                      //       child: Center(
+                      //           child: Text(
+                      //         "Save Deatils",
+                      //         style: GoogleFonts.nunitoSans(
+                      //             fontSize: 18,
+                      //             fontWeight: FontWeight.w700,
+                      //             color: Colors.black),
+                      //       )),
+                      //     ))
                     ],
                   ),
                 ),
               )
-             
             ]),
           ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    super.dispose();
   }
 }

@@ -1,6 +1,7 @@
 // lib/models/home_tapu_card_data.dart
 // ఈ ఫైల్ లో ఎటువంటి మార్పు ఉండదు.
-import 'package:memory_pins_app/models/map_coordinates.dart'; // Assuming you might use this elsewhere, though not directly in the home card's immediate display
+import 'package:memory_pins_app/models/map_coordinates.dart';
+import 'package:memory_pins_app/models/tapus.dart';
 
 class HomeTapuCardData {
   final String id;
@@ -16,7 +17,8 @@ class HomeTapuCardData {
   final int viewsCount;
   final int playsCount;
   final List<String> previewImageUrls;
-   final List<String> reactionEmojis;
+  final List<String> reactionEmojis;
+  final Tapus? originalTapus; // Store original Tapus data for navigation
 
   HomeTapuCardData({
     required this.id,
@@ -33,6 +35,7 @@ class HomeTapuCardData {
     required this.playsCount,
     required this.previewImageUrls,
     required this.reactionEmojis,
+    this.originalTapus, // Optional original Tapus data
   });
 
   // Optional: fromJson factory constructor if you load this data from JSON
@@ -52,24 +55,28 @@ class HomeTapuCardData {
       playsCount: json['playsCount'] as int,
       previewImageUrls: List<String>.from(json['previewImageUrls'] as List),
       reactionEmojis: List<String>.from(json['reactionEmojis'] as List),
+      originalTapus: json['originalTapus'] != null
+          ? Tapus.fromJson(json['originalTapus'] as Map<String, dynamic>)
+          : null,
     );
   }
 
   // Optional: toJson method
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'locationName': locationName,
-    'tapuName': tapuName,
-    'mainImageUrl': mainImageUrl,
-    'ownerAvatarUrl': ownerAvatarUrl,
-    'emojis': emojis,
-    'pinCount': pinCount,
-    'imageCount': imageCount,
-    'imageCount_text': imageCount_text,
-    'audioCount': audioCount,
-    'viewsCount': viewsCount,
-    'playsCount': playsCount,
-    'previewImageUrls': previewImageUrls,
-    'reactionEmojis': reactionEmojis,
-  };
+        'id': id,
+        'locationName': locationName,
+        'tapuName': tapuName,
+        'mainImageUrl': mainImageUrl,
+        'ownerAvatarUrl': ownerAvatarUrl,
+        'emojis': emojis,
+        'pinCount': pinCount,
+        'imageCount': imageCount,
+        'imageCount_text': imageCount_text,
+        'audioCount': audioCount,
+        'viewsCount': viewsCount,
+        'playsCount': playsCount,
+        'previewImageUrls': previewImageUrls,
+        'reactionEmojis': reactionEmojis,
+        'originalTapus': originalTapus?.toJson(),
+      };
 }

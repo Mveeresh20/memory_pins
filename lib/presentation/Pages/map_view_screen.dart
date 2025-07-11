@@ -6,6 +6,7 @@ import 'package:memory_pins_app/models/map_coordinates.dart';
 import 'package:memory_pins_app/presentation/Pages/tapu_detail_screen.dart';
 import 'package:memory_pins_app/presentation/Widgets/map_tapu_widget.dart';
 import 'package:memory_pins_app/presentation/Widgets/map_detail_card.dart';
+import 'package:memory_pins_app/services/edit_profile_provider.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
 import 'package:memory_pins_app/services/location_service.dart';
 import 'package:memory_pins_app/providers/tapu_provider.dart';
@@ -312,19 +313,19 @@ class _MapViewScreenState extends State<MapViewScreen> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      GestureDetector(
-                        onTap: () {
-                          NavigationService.pushNamed('/profile');
+                       Consumer<EditProfileProvider>(
+                        builder: (context, provider, child) {
+                          return GestureDetector(
+                            onTap: () {
+                              NavigationService.pushNamed('/profile');
+                            },
+                            child: CircleAvatar(
+                              radius: 20,
+                              backgroundImage: NetworkImage(provider.getProfileImageUrl()),
+                                 
+                            ),
+                          );
                         },
-                        child: CircleAvatar(
-                          radius: 20,
-                          backgroundImage: NetworkImage(
-                            Images.profileImg,
-                          ),
-                          onBackgroundImageError: (exception, stackTrace) {
-                            print('Error loading profile image: $exception');
-                          },
-                        ),
                       ),
                     ],
                   ),
@@ -398,12 +399,13 @@ class _MapViewScreenState extends State<MapViewScreen> {
                   ),
                   heroTag: 'stack_fab', // Unique tag
                   onPressed: () {
-                    NavigationService.pushNamed('/tapu-detail');
+                    
+                    // NavigationService.pushNamed('/tapu-detail');
 
                     // TODO: Navigate to Saved Pins Screen
                   },
                   backgroundColor: Color(0xFFF5BF4D),
-                  child: Image.network(Images.layersImg),
+                  child: Image.network(Images.layersImg2),
                 ),
               ),
 

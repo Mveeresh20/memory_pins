@@ -19,11 +19,14 @@ import 'package:memory_pins_app/presentation/Pages/onboarding1.dart';
 import 'package:memory_pins_app/presentation/Pages/onboarding2.dart';
 import 'package:memory_pins_app/presentation/Pages/onboarding3.dart';
 import 'package:memory_pins_app/presentation/Pages/pin_detail_screen.dart';
+import 'package:memory_pins_app/presentation/Pages/premium_purchase.dart';
 import 'package:memory_pins_app/presentation/Pages/profile_page.dart';
 import 'package:memory_pins_app/presentation/Pages/saved_pins.dart';
 import 'package:memory_pins_app/presentation/Pages/sign_up_page.dart';
 import 'package:memory_pins_app/presentation/Pages/tapu_detail_screen.dart';
 import 'package:memory_pins_app/presentation/Pages/tapu_pins.dart';
+import 'package:memory_pins_app/services/auth_service.dart';
+import 'package:memory_pins_app/services/edit_profile_provider.dart';
 
 import 'package:memory_pins_app/services/hive_service.dart';
 import 'package:memory_pins_app/services/location_service.dart';
@@ -116,6 +119,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<UserProvider>(
           create: (_) => UserProvider(),
         ),
+        ChangeNotifierProvider<EditProfileProvider>(
+          create: (_) => EditProfileProvider(),
+        ),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -129,7 +135,25 @@ class MyApp extends StatelessWidget {
           '/my-pins': (context) => MyPinsScreen(),
           '/profile': (context) => ProfilePage(),
           '/create-tapu': (context) => CreateTapuScreen(),
-          '/tapu-pins': (context) => TapuPins(),
+          '/tapu-pins': (context) {
+            final args = ModalRoute.of(context)?.settings.arguments;
+            if (args is Tapus) {
+              return TapuPins(tapus: args);
+            } else {
+              // Fallback to a dummy Tapus if no arguments provided
+              final fallbackTapus = Tapus(
+                id: 'fallback',
+                name: 'Unknown Tapus',
+                avatarUrl: '',
+                centerPinImageUrl: '',
+                centerCoordinates:
+                    MapCoordinates(latitude: 0.0, longitude: 0.0),
+                totalPins: 0,
+                location: 'Unknown Location',
+              );
+              return TapuPins(tapus: fallbackTapus);
+            }
+          },
           '/login': (context) => LoginPage(),
           '/signup': (context) => SignUpPage(),
           '/my-tapu': (context) => MyTapusScreen(),
@@ -141,6 +165,7 @@ class MyApp extends StatelessWidget {
           '/saved-pins': (context) => SavedPins(),
           '/onboarding2': (context) => Onboarding2(),
           '/map-view': (context) => MapViewScreen(),
+          '/premium-purchase': (context) => PremiumPurchase(),
         },
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),

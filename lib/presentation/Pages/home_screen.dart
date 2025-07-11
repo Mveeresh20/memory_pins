@@ -8,6 +8,7 @@ import 'package:memory_pins_app/presentation/Pages/my_pins_screen.dart';
 import 'package:memory_pins_app/presentation/Pages/pin_detail_screen.dart';
 // Correct Google Maps widget with custom UI
 import 'package:memory_pins_app/presentation/Widgets/map_pin_widget.dart';
+import 'package:memory_pins_app/services/edit_profile_provider.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
 import 'package:memory_pins_app/services/app_integration_service.dart';
 import 'package:memory_pins_app/providers/pin_provider.dart';
@@ -341,19 +342,19 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      GestureDetector(
-                        onTap: () {
-                          NavigationService.pushNamed('/profile');
+                      Consumer<EditProfileProvider>(
+                        builder: (context, provider, child) {
+                          return GestureDetector(
+                            onTap: () {
+                              NavigationService.pushNamed('/profile');
+                            },
+                            child: CircleAvatar(
+                              radius: 20,
+                              backgroundImage:
+                                  NetworkImage(provider.getProfileImageUrl()),
+                            ),
+                          );
                         },
-                        child: CircleAvatar(
-                          radius: 20,
-                          backgroundImage: currentUser?.photoURL != null
-                              ? NetworkImage(currentUser!.photoURL!)
-                              : NetworkImage(Images.profileImg),
-                          onBackgroundImageError: (exception, stackTrace) {
-                            print('Error loading profile image: $exception');
-                          },
-                        ),
                       ),
                     ],
                   ),
@@ -394,12 +395,9 @@ class _HomeScreenState extends State<HomeScreen> {
               AnimatedBuilder(
                 animation: _bottomSheetController,
                 builder: (context, child) {
-                  if (!_bottomSheetController.isAttached) {
-                    return SizedBox
-                        .shrink(); // Return empty widget if not attached
-                  }
-
-                  final sheetHeight = _bottomSheetController.size;
+                  final sheetHeight = _bottomSheetController.isAttached
+                      ? _bottomSheetController.size
+                      : 0.18; // Default to initial size if not attached
                   final screenHeight = MediaQuery.of(context).size.height;
                   final bottomPosition =
                       screenHeight * sheetHeight + 10; // 10px above the sheet
@@ -437,12 +435,9 @@ class _HomeScreenState extends State<HomeScreen> {
               AnimatedBuilder(
                 animation: _bottomSheetController,
                 builder: (context, child) {
-                  if (!_bottomSheetController.isAttached) {
-                    return SizedBox
-                        .shrink(); // Return empty widget if not attached
-                  }
-
-                  final sheetHeight = _bottomSheetController.size;
+                  final sheetHeight = _bottomSheetController.isAttached
+                      ? _bottomSheetController.size
+                      : 0.18; // Default to initial size if not attached
                   final screenHeight = MediaQuery.of(context).size.height;
                   final bottomPosition =
                       screenHeight * sheetHeight + 10; // 10px above the sheet

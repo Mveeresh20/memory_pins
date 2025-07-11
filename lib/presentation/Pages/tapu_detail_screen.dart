@@ -10,10 +10,12 @@ import 'package:memory_pins_app/presentation/Widgets/tapu_detail_map_widget.dart
 import 'package:memory_pins_app/presentation/Widgets/tapu_pins_card.dart';
 import 'package:memory_pins_app/presentation/Pages/pin_detail_screen.dart';
 import 'package:memory_pins_app/models/pin_detail.dart';
+import 'package:memory_pins_app/services/edit_profile_provider.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
 import 'package:memory_pins_app/providers/tapu_provider.dart';
 import 'package:memory_pins_app/providers/pin_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:memory_pins_app/services/auth_service.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/label_text_style.dart';
@@ -31,6 +33,7 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
   List<Pin> _nearbyPins = [];
   bool _isLoading = true;
   String? _error;
+  String? _creatorUsername;
   final DraggableScrollableController _bottomSheetController =
       DraggableScrollableController();
 
@@ -38,6 +41,7 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
   void initState() {
     super.initState();
     _loadNearbyPins();
+    _loadCreatorUsername();
   }
 
   Future<void> _loadNearbyPins() async {
@@ -125,9 +129,25 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
   }
 
   // Get distance from tapu center to pin
-  String _getPinDistanceFromTapu(Pin pin) {
+  String _getDistanceFromTapu(Pin pin) {
     final tapuProvider = Provider.of<TapuProvider>(context, listen: false);
     return tapuProvider.getPinDistanceFromTapu(widget.tapu, pin);
+  }
+
+  // Load current user's username
+  Future<void> _loadCreatorUsername() async {
+    try {
+      final authService = AuthService();
+      final username = await authService.getCurrentUserUsername();
+      setState(() {
+        _creatorUsername = username ?? 'Unknown User';
+      });
+    } catch (e) {
+      print('Error loading current user username: $e');
+      setState(() {
+        _creatorUsername = 'Unknown User';
+      });
+    }
   }
 
   @override
@@ -146,7 +166,7 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
                 _navigateToPinDetail(pin);
               },
               isLoading: _isLoading,
-              getPinDistance: (pin) => _getPinDistanceFromTapu(pin),
+              getPinDistance: (pin) => _getDistanceFromTapu(pin),
             ),
           ),
 
@@ -201,7 +221,7 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
                           borderRadius: BorderRadius.circular(36),
                         ),
                         child: Text(
-                          widget.tapu.name,
+                          _creatorUsername ?? 'Loading...',
                           textAlign: TextAlign.center,
                           style: GoogleFonts.inter(
                             color: Colors.white,
@@ -212,18 +232,20 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
                       ),
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () {
-                      NavigationService.pushNamed('/profile');
-                    },
-                    child: CircleAvatar(
-                      radius: 20,
-                      backgroundImage: NetworkImage(widget.tapu.avatarUrl),
-                      onBackgroundImageError: (exception, stackTrace) {
-                        print('Error loading avatar image: $exception');
-                      },
-                    ),
-                  ),
+                  Consumer<EditProfileProvider>(
+                        builder: (context, provider, child) {
+                          return GestureDetector(
+                            onTap: () {
+                              NavigationService.pushNamed('/profile');
+                            },
+                            child: CircleAvatar(
+                              radius: 20,
+                              backgroundImage: NetworkImage(provider.getProfileImageUrl()),
+                                 
+                            ),
+                          );
+                        },
+                      ),
                 ],
               ),
             ),

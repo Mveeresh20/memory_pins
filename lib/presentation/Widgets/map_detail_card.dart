@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:memory_pins_app/models/home_tapu_card_data.dart';
 import 'package:memory_pins_app/models/tapu.dart';
 import 'package:memory_pins_app/models/tapus.dart';
 import 'package:memory_pins_app/models/map_coordinates.dart';
@@ -14,12 +15,14 @@ import 'package:provider/provider.dart';
 
 class MapDetailCard extends StatelessWidget {
   final Tapu tapu;
-  final VoidCallback? onClose; // Callback for when the card is closed/minimized
+  final VoidCallback? onClose;
+  final HomeTapuCardData? data; // Callback for when the card is closed/minimized
 
   const MapDetailCard({
     Key? key,
     required this.tapu,
     this.onClose,
+     this.data,
   }) : super(key: key);
 
   void _navigateToTapuDetail(BuildContext context) {
@@ -197,7 +200,7 @@ class MapDetailCard extends StatelessWidget {
                             const SizedBox(width: 4.0),
                             Flexible(
                               child: Text(
-                                '0 Audios', // Will be calculated from pins
+                                ' 0 Audios', // Will be calculated from pins
                                 style: text14W600White(context),
                               ),
                             ),

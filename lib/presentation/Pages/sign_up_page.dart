@@ -168,6 +168,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _confirmPasswordController =
       TextEditingController();
   bool isPasswordVisible = false;
+  bool isConfirmPasswordVisible = false;
 
   @override
   void dispose() {
@@ -205,6 +206,7 @@ class _SignUpPageState extends State<SignUpPage> {
     if (value == null || value.trim().isEmpty) return "Name is required";
     return null;
   }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -384,14 +386,14 @@ class _SignUpPageState extends State<SignUpPage> {
                     hintStyle: TextStyle(color: Color(0xFF919EAA)),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        isPasswordVisible
+                        isConfirmPasswordVisible
                             ? Icons.visibility
                             : Icons.visibility_off,
                         color: Colors.white,
                       ),
                       onPressed: () {
                         setState(() {
-                          isPasswordVisible = !isPasswordVisible;
+                          isConfirmPasswordVisible = !isConfirmPasswordVisible;
                         });
                       },
                     ),
@@ -497,7 +499,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                       ),
                       child: Text(
-                        "Sign up",
+                        "Sign In",
                         style: GoogleFonts.nunitoSans(
                           fontWeight: FontWeight.w700,
                           fontSize: 16,

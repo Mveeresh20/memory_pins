@@ -363,6 +363,7 @@ class FirebaseService {
       //       longitude: tapuData['longitude'] ?? 0.0,
       //     ),
       //     totalPins: tapuData['totalPins'] ?? 0,
+      //     location: tapuData['location'] ?? '', // Add location field
       //   );
       //   userTapus.add(tapu);
       // }
@@ -396,6 +397,7 @@ class FirebaseService {
           longitude: tapuData['longitude'] ?? 0.0,
         ),
         totalPins: tapuData['totalPins'] ?? 0,
+        location: tapuData['location'] ?? '', // Add location field
       );
     } catch (e) {
       throw Exception('Failed to get tapu: $e');
@@ -435,6 +437,7 @@ class FirebaseService {
           totalPins: tapuData['totalPins'] ?? 0,
           emojis:
               List<String>.from(tapuData['emojis'] ?? []), // Retrieve emojis
+          location: tapuData['location'] ?? '', // Retrieve location name
         );
 
         print('Created Tapus object:');

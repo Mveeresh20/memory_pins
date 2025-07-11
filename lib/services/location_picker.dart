@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:get/get.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
@@ -41,6 +42,9 @@ class _LocationPickerState extends State<LocationPicker> {
     super.initState();
     _locationService = Provider.of<LocationService>(context, listen: false);
     _locationService.setContext(context);
+
+    // Initialize with current location when widget is created
+    _initializeLocation();
   }
 
   @override
@@ -81,6 +85,7 @@ class _LocationPickerState extends State<LocationPicker> {
   }
 
   Future<void> _initializeLocation() async {
+    // If we have initial location data, use it
     if (widget.initialLocation != null &&
         widget.initialLocation!['latitude'] != null &&
         widget.initialLocation!['longitude'] != null) {
@@ -92,37 +97,61 @@ class _LocationPickerState extends State<LocationPicker> {
         _selectedAddress = widget.initialLocation!['address'] as String? ?? '';
         _errorMessage = null;
       });
+
+      // Move map to the initial location
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_selectedLocation != null) {
+          _mapController.move(_selectedLocation!, 15);
+        }
+      });
       return;
     }
 
-    try {
-      final servicesEnabled = await _checkLocationServices();
-      if (!servicesEnabled) {
-        setState(() {
-          _isGettingLocation = false;
-          _errorMessage = "Location services are not enabled";
-        });
-        return;
-      }
+    // Otherwise, get current location
+    setState(() {
+      _isGettingLocation = true;
+      _errorMessage = null;
+    });
 
-      final hasPermission = await _handleLocationPermission();
-      if (!hasPermission) {
+    try {
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
         setState(() {
           _isGettingLocation = false;
           _errorMessage =
-              "Location falsepermission is required to show nearby events";
+              "Location services are disabled. Please enable location services.";
         });
         return;
       }
 
-      setState(() {
-        _isGettingLocation = true;
-        _errorMessage = null;
-      });
+      // Check location permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            _isGettingLocation = false;
+            _errorMessage =
+                "Location permission denied. Please enable location permission.";
+          });
+          return;
+        }
+      }
 
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          _isGettingLocation = false;
+          _errorMessage =
+              "Location permissions are permanently denied. Please enable them in settings.";
+        });
+        return;
+      }
+
+      // Get current position
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 5),
+        timeLimit: const Duration(seconds: 10),
       );
 
       if (mounted) {
@@ -130,18 +159,20 @@ class _LocationPickerState extends State<LocationPicker> {
           _selectedLocation = LatLng(position.latitude, position.longitude);
           _isGettingLocation = false;
         });
+
+        // Move map to current location
+        _mapController.move(_selectedLocation!, 15);
+
+        // Get address for the current location
         await _getAddressFromCoordinates(position.latitude, position.longitude);
       }
     } catch (e) {
-      developer.log('Error initializing location: $e');
+      developer.log('Error getting current location: $e');
       if (mounted) {
         setState(() {
-          // _selectedLocation =
-          //     LatLng(37.7749, -122.4194); // Default to San Francisco
-          // _selectedAddress = 'San Francisco, CA';
-          // _isGettingLocation = false;
-          // _errorMessage =
-          //     'Unable to get your location. Using default location.';
+          _isGettingLocation = false;
+          _errorMessage =
+              'Failed to get current location. Please try again or search for a location.';
         });
       }
     }
@@ -350,8 +381,17 @@ class _LocationPickerState extends State<LocationPicker> {
               Expanded(
                 child: TextField(
                   controller: _searchController,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: GoogleFonts.nunitoSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                   decoration: InputDecoration(
+                    labelStyle: GoogleFonts.nunitoSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                     labelText: 'Search location',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -401,7 +441,9 @@ class _LocationPickerState extends State<LocationPicker> {
               FlutterMap(
                 mapController: _mapController,
                 options: MapOptions(
-                  initialCenter: _selectedLocation ?? const LatLng(0, 0),
+                  initialCenter: _selectedLocation ??
+                      const LatLng(
+                          0, 0), // Will be updated when location is found
                   initialZoom: 15,
                   onTap: (tapPosition, point) async {
                     setState(() {
@@ -435,6 +477,31 @@ class _LocationPickerState extends State<LocationPicker> {
                     ),
                 ],
               ),
+
+              // Loading overlay when getting location
+              if (_isGettingLocation)
+                Container(
+                  color: Colors.black.withOpacity(0.3),
+                  child: const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          color: Colors.white,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Getting your current location...',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               // Zoom controls
               Positioned(
                 right: 16,
@@ -480,7 +547,7 @@ class _LocationPickerState extends State<LocationPicker> {
                       style: Theme.of(context)
                           .textTheme
                           .bodyMedium
-                          ?.copyWith(fontSize: 16, color: Colors.white),
+                          ?.copyWith(fontSize: 16, color: Colors.black),
                     ),
                   ),
                 ),

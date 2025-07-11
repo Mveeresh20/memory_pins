@@ -345,6 +345,7 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                   IconButton(

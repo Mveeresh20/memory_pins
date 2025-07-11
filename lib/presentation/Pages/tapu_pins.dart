@@ -1,84 +1,81 @@
 import 'package:flutter/material.dart';
 import 'package:memory_pins_app/models/tapu_pins_item.dart';
+import 'package:memory_pins_app/models/tapus.dart';
+import 'package:memory_pins_app/models/pin.dart';
 import 'package:memory_pins_app/presentation/Widgets/tapu_pins_card.dart';
+import 'package:memory_pins_app/providers/tapu_provider.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/label_text_style.dart';
+import 'package:provider/provider.dart';
 
 class TapuPins extends StatefulWidget {
-  const TapuPins({super.key});
+  final Tapus tapus; // Add Tapus parameter
+
+  const TapuPins({super.key, required this.tapus});
 
   @override
   State<TapuPins> createState() => _TapuPinsState();
 }
 
 class _TapuPinsState extends State<TapuPins> {
+  List<TapuPinsItem> _allPins = [];
+  bool _isLoading = true;
+  String? _error;
 
-  final List<TapuPinsItem> _allPins = [
-    TapuPinsItem(
-      id: '1',
-      location: 'New Jersey',
-      // Example flag emoji
-      title: 'Rainy Window Seat',
-      emoji: Images.smileImg,
-      photoCount: 7,
-      audioCount: 1,
-      imageUrls: [
-        Images.umbrellaImg,
-        Images.childUmbrella,
-        Images.manWithRiver,
-        Images.rainImg,
-        Images.umbrellaImg
-      ],
-      viewsCount: 34,
-      playsCount: 12,
-    ),
-    TapuPinsItem(
-      id: '2',
+  @override
+  void initState() {
+    super.initState();
+    _loadTapuPins();
+  }
 
-      location: 'Washington DC',
-      flagEmoji: '🇺🇸',
-      title: 'Sunset Goodbye',
-      emoji: Images.confusionImg,
-      photoCount: 9,
-      audioCount: 2,
-      imageUrls: [
-        Images.umbrellaImg,
-        Images.childUmbrella,
-        Images.manWithRiver,
-        Images.rainImg
-      ],
-      viewsCount: 500,
-      playsCount: 5,
-    ),
-    TapuPinsItem(
-      id: '3',
+  Future<void> _loadTapuPins() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
 
-      location:
-          'Inter Milan', // Assuming this is a place, not the football club
+      final tapuProvider = Provider.of<TapuProvider>(context, listen: false);
 
-      title: 'Lighthouse Curve',
-      emoji: Images.dancingImg,
-      photoCount: 7,
-      audioCount: 1,
-      imageUrls: [
-        Images.umbrellaImg,
-        Images.childUmbrella,
-        Images.manWithRiver,
-        Images.rainImg
-      ],
-      viewsCount: 34,
-      playsCount: 12,
-    ),
-    // Add more PinItem instances as needed
-  ];
+      // Load pins around the Tapus
+      final pins = await tapuProvider.loadPinsAroundTapu(widget.tapus);
+      print('Loaded ${pins.length} pins for Tapus: ${widget.tapus.name}');
 
+      // Convert Pin data to TapuPinsItem
+      final tapuPinsItems =
+          pins.map((pin) => _convertPinToTapuPinsItem(pin)).toList();
 
+      setState(() {
+        _allPins = tapuPinsItems;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading Tapu pins: $e');
+      setState(() {
+        _error = 'Failed to load pins: $e';
+        _isLoading = false;
+      });
+    }
+  }
 
-
-  
-
+  TapuPinsItem _convertPinToTapuPinsItem(Pin pin) {
+    return TapuPinsItem(
+      id: pin.id,
+      location: pin.location,
+      flagEmoji: pin.flagEmoji,
+      title: pin.title,
+      emoji: pin.moodIconUrl, // Use moodIconUrl as emoji
+      photoCount: pin.photoCount,
+      audioCount: pin.audioCount,
+      imageUrls: pin.imageUrls.isNotEmpty
+          ? pin.imageUrls
+          : [pin.imageUrl], // Use imageUrls or fallback to imageUrl
+      viewsCount: pin.viewsCount,
+      playsCount: pin.playsCount,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +90,9 @@ class _TapuPinsState extends State<TapuPins> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
                         decoration: BoxDecoration(
                           color: AppColors.frameBgColor,
                           borderRadius: BorderRadius.circular(8),
@@ -106,56 +105,110 @@ class _TapuPinsState extends State<TapuPins> {
                             color: Colors.white,
                             size: 20,
                           ),
-                        )),
-                    
-                    Center(child: Text("Goa Drift", 
-                    textAlign: TextAlign.center,
-                    style: text18W700White(context))),
-
+                        ),
+                      ),
+                    ),
+                    Center(
+                      child: Text(widget.tapus.name, // Use Tapus name
+                          textAlign: TextAlign.center,
+                          style: text18W700White(context)),
+                    ),
                     Container(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        gradient: LinearGradient(colors: [
-                          Color(0xFFF5C253),
-                          Color(0xFFEBA145)
-
-                        ])
-
-                      ),
+                          borderRadius: BorderRadius.circular(8),
+                          gradient: LinearGradient(
+                              colors: [Color(0xFFF5C253), Color(0xFFEBA145)])),
                       child: Padding(
                         padding: const EdgeInsets.all(10.0),
                         child: GestureDetector(
                           onTap: () {
                             NavigationService.pushNamed('/tapu-detail');
                           },
-                          child: Icon(Icons.map,color: Colors.white,)),
-                      )),
-
-
+                          child: Icon(Icons.map, color: Colors.white),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
 
                 SizedBox(height: 24),
 
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: NeverScrollableScrollPhysics(),
-                  separatorBuilder: (context, index) {
-                    return SizedBox(
-                      height: 12,
-                    );
-                  },
+                // Loading state
+                if (_isLoading)
+                  Center(
+                    child: Column(
+                      children: [
+                        CircularProgressIndicator(
+                          color: AppColors.bgGroundYellow,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Loading pins...',
+                          style: text14W400White(context),
+                        ),
+                      ],
+                    ),
+                  ),
 
-                  itemCount:
-                      _allPins.length, // Use the length of your dynamic data
-                  itemBuilder: (context, index) {
-                    final pin = _allPins[index]; // Get the current PinItem
-                    return TapuPinsCard(
-                        tapuPins: pin); // Pass the dynamic data to your card widget
-                  },
-                )
+                // Error state
+                if (_error != null)
+                  Center(
+                    child: Column(
+                      children: [
+                        Text(
+                          _error!,
+                          style: TextStyle(color: Colors.red),
+                        ),
+                        SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _loadTapuPins,
+                          child: Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
 
+                // Empty state
+                if (!_isLoading && _error == null && _allPins.isEmpty)
+                  Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.location_off,
+                          size: 64,
+                          color: Colors.grey[600],
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'No pins found',
+                          style: text18W700White(context),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'No pins have been created for this Tapus yet',
+                          style: TextStyle(
+                            color: Colors.grey[400],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
+                // Pins list
+                if (!_isLoading && _error == null && _allPins.isNotEmpty)
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    separatorBuilder: (context, index) {
+                      return SizedBox(height: 12);
+                    },
+                    itemCount: _allPins.length,
+                    itemBuilder: (context, index) {
+                      final pin = _allPins[index];
+                      return TapuPinsCard(tapuPins: pin);
+                    },
+                  ),
               ],
             ),
           ),

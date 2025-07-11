@@ -48,6 +48,8 @@ class Images {
   static const layersImg =
       "https://ik.imagekit.io/sports123/Vector%20(9).png?updatedAt=1749705228803";
 
+      static const layersImg2= "https://ik.imagekit.io/sports123/Vector%20(19).png?updatedAt=1752241541996";
+
   static const earthImg =
       "https://ik.imagekit.io/sports123/fea172e602d51ea399ff0c2747df31e1557be031%20(1).png?updatedAt=1749706198598";
 
@@ -115,6 +117,13 @@ class Images {
      static const logoutImg= "https://ik.imagekit.io/sports123/ic_round-logout.png?updatedAt=1750680231180";
 
      static const deleteImg= "https://ik.imagekit.io/sports123/Vector%20(14).png?updatedAt=1750680215369";
+
+
+     static const String profile =
+      "https://ik.imagekit.io/sports123/744157eb98c5ecc91ee82ad3d9ca76706a7caa8b.png?updatedAt=1747738234667";
+
+      static const String noprofileImg =
+      'https://ik.imagekit.io/sports123/user.png?updatedAt=1750139684536';
 
      
 
