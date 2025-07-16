@@ -261,7 +261,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ProfileOptionTile(
                           isSelected: selectedTileIndex == 2,
                             image: Images.subscriptionImg,
-                            title: "Premium Purchase",
+                            title: "Upgrade to premium",
                             onTap: () {
                               setState(() {
                                 selectedTileIndex = 2;

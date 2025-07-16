@@ -45,7 +45,7 @@ class _PremiumPurchaseState extends State<PremiumPurchase> {
           ],
           stops: const [0.0, 0.4], // Adjust stop to control gradient fade
          ),
-         color: const Color(0xFF1A1A2E), // Solid dark color for the lower part
+         color: const Color(0xFF15212F), // Solid dark color for the lower part
         ),
        ),
       ),
@@ -165,6 +165,14 @@ class _PremiumPurchaseState extends State<PremiumPurchase> {
             decoration: BoxDecoration(
              color:Color(0xFF1E3347).withOpacity(0.4), // Slightly transparent dark
              borderRadius: BorderRadius.circular(16.0),
+             boxShadow: [
+              BoxShadow(
+               color: Colors.black.withOpacity(0.6),
+               blurRadius: 12,
+               offset: const Offset(2, 12),
+              ),
+             ],
+             
             ),
             child: Column(
              crossAxisAlignment: CrossAxisAlignment.start,

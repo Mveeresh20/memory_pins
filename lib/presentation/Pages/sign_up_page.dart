@@ -186,12 +186,19 @@ class _SignUpPageState extends State<SignUpPage> {
     return null;
   }
 
+  // String? _validatePassword(String? value) {
+  //   const pattern =
+  //       r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[!@#\$&*~]).{8,}$';
+  //   final regex = RegExp(pattern);
+  //   if (value == null || value.isEmpty) return "Password is required";
+  //   if (!regex.hasMatch(value)) {
+  //     return "Password must be 8 characters length";
+  //   }
+  //   return null;
+  // }
   String? _validatePassword(String? value) {
-    const pattern =
-        r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[!@#\$&*~]).{8,}$';
-    final regex = RegExp(pattern);
     if (value == null || value.isEmpty) return "Password is required";
-    if (!regex.hasMatch(value)) {
+    if (value.length < 8) {
       return "Password must be 8 characters length";
     }
     return null;
@@ -373,14 +380,14 @@ class _SignUpPageState extends State<SignUpPage> {
                 child: TextFormField(
                   controller: _confirmPasswordController,
 
-                  obscureText: !isPasswordVisible, // Toggle visibility
+                  obscureText: !isConfirmPasswordVisible, // Toggle visibility
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     contentPadding: EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 10,
                     ),
-                    labelText: 'Password',
+                    labelText: 'Confirm Password',
                     labelStyle: const TextStyle(color: Colors.white),
                     hintText: 'Re-Enter your Password',
                     hintStyle: TextStyle(color: Color(0xFF919EAA)),

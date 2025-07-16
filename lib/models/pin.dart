@@ -38,6 +38,47 @@ class Pin {
     this.createdAt, // Make it optional
   });
 
+  // Copy with method for creating modified copies
+  Pin copyWith({
+    String? location,
+    String? flagEmoji,
+    String? title,
+    String? emoji,
+    String? id,
+    double? latitude,
+    double? longitude,
+    String? imageUrl,
+    String? moodIconUrl,
+    String? description,
+    int? photoCount,
+    int? audioCount,
+    List<String>? imageUrls,
+    List<String>? audioUrls,
+    int? viewsCount,
+    int? playsCount,
+    DateTime? createdAt,
+  }) {
+    return Pin(
+      location: location ?? this.location,
+      flagEmoji: flagEmoji ?? this.flagEmoji,
+      title: title ?? this.title,
+      emoji: emoji ?? this.emoji,
+      id: id ?? this.id,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      imageUrl: imageUrl ?? this.imageUrl,
+      moodIconUrl: moodIconUrl ?? this.moodIconUrl,
+      description: description ?? this.description,
+      photoCount: photoCount ?? this.photoCount,
+      audioCount: audioCount ?? this.audioCount,
+      imageUrls: imageUrls ?? this.imageUrls,
+      audioUrls: audioUrls ?? this.audioUrls,
+      viewsCount: viewsCount ?? this.viewsCount,
+      playsCount: playsCount ?? this.playsCount,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
   factory Pin.fromJson(Map<String, dynamic> json) {
     return Pin(
       location: json['location'],

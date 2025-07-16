@@ -32,6 +32,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
   final GlobalKey<TapuMapWidgetState> _mapKey = GlobalKey<TapuMapWidgetState>();
   String _currentCity = 'Loading...';
   final LocationService _locationService = LocationService();
+  bool _isFirstLoad = true; // Add flag for first load
 
   @override
   void initState() {
@@ -43,10 +44,44 @@ class _MapViewScreenState extends State<MapViewScreen> {
     });
   }
 
-  void _loadTapus() {
+  void _loadTapus() async {
     final tapuProvider = Provider.of<TapuProvider>(context, listen: false);
-    tapuProvider.initialize();
-    tapuProvider.loadNearbyTapus(50.0); // Load tapus within 0-50KM range
+    if (!tapuProvider.isInitialized) {
+      print('First time loading tapus...');
+      await tapuProvider.initialize(); // Wait for initialization to complete
+      setState(() {
+        _isFirstLoad = false;
+      });
+      print('Tapus loaded successfully');
+
+      // Refresh the map widget to show the loaded tapus
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mapKey.currentState?.refreshTapus();
+      });
+    } else {
+      print('Tapus already initialized, using cached data');
+      setState(() {
+        _isFirstLoad = false;
+      });
+
+      // Refresh the map widget to show the cached tapus
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mapKey.currentState?.refreshTapus();
+      });
+    }
+  }
+
+  // Method to refresh tapus manually
+  void _refreshTapus() async {
+    final tapuProvider = Provider.of<TapuProvider>(context, listen: false);
+    setState(() {
+      _isFirstLoad = true;
+    });
+    await tapuProvider.refresh();
+    setState(() {
+      _isFirstLoad = false;
+    });
+    _mapKey.currentState?.refreshTapus();
   }
 
   // Get current city based on user's location
@@ -165,11 +200,21 @@ class _MapViewScreenState extends State<MapViewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      bottomNavigationBar: _buildCustomBottomNavBar(context),
       backgroundColor: Colors.grey[100], // A light background for the map
-      body: Consumer<TapuProvider>(
-        builder: (context, tapuProvider, child) {
+      body: Consumer2<TapuProvider, EditProfileProvider>(
+        builder: (context, tapuProvider, editProfileProvider, child) {
           final tapus = tapuProvider.nearbyTapus;
           final isLoading = tapuProvider.isLoading;
+          final isInitialized = tapuProvider.isInitialized;
+          final userProfileImageUrl = editProfileProvider.getProfileImageUrl();
+
+          // Debug logging
+          print('MapViewScreen - Tapus count: ${tapus.length}');
+          print('MapViewScreen - Is loading: $isLoading');
+          print('MapViewScreen - Is initialized: $isInitialized');
+          print('MapViewScreen - Is first load: $_isFirstLoad');
+          print('MapViewScreen - User Profile Image URL: $userProfileImageUrl');
 
           return Stack(
             children: [
@@ -183,6 +228,8 @@ class _MapViewScreenState extends State<MapViewScreen> {
                     _navigateToTapuDetail(selectedTapu);
                   },
                   isLoading: isLoading,
+                  userProfileImageUrl:
+                      userProfileImageUrl, // Pass the profile image URL
                   getTapuDistance: (tapu) {
                     final tapuProvider =
                         Provider.of<TapuProvider>(context, listen: false);
@@ -192,12 +239,26 @@ class _MapViewScreenState extends State<MapViewScreen> {
               ),
 
               // --- Loading Overlay ---
-              if (isLoading)
+              if ((isLoading && !isInitialized) || _isFirstLoad)
                 Container(
                   color: Colors.black.withOpacity(0.3),
                   child: const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          color: Colors.white,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Loading tapus...',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -313,7 +374,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                       Consumer<EditProfileProvider>(
+                      Consumer<EditProfileProvider>(
                         builder: (context, provider, child) {
                           return GestureDetector(
                             onTap: () {
@@ -321,8 +382,8 @@ class _MapViewScreenState extends State<MapViewScreen> {
                             },
                             child: CircleAvatar(
                               radius: 20,
-                              backgroundImage: NetworkImage(provider.getProfileImageUrl()),
-                                 
+                              backgroundImage:
+                                  NetworkImage(provider.getProfileImageUrl()),
                             ),
                           );
                         },
@@ -362,51 +423,74 @@ class _MapViewScreenState extends State<MapViewScreen> {
                 ),
               ),
 
-              // --- Floating Action Buttons ---
-              Positioned(
-                bottom: 300, // Adjust position based on bottom sheet height
-                left: 16,
-                child: FloatingActionButton(
-                  shape: CircleBorder(),
-                  heroTag: 'mood_fab', // Unique tag for multiple FABs
-                  onPressed: () {
-                    NavigationService.pushNamed('/create-tapu');
-                    print('Smiley/Mood FAB tapped');
-                  },
-                  backgroundColor: Color(0xFF531DAB),
-                  child: Image.network(
-                    Images.addIcon,
-                    width: 30,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.sentiment_dissatisfied,
-                      color: Colors.red,
-                    ), // Fallback
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 300, // Adjust position
-                right: 16,
-                child: FloatingActionButton(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(40),
-                  ),
-                  heroTag: 'stack_fab', // Unique tag
-                  onPressed: () {
-                    
-                    // NavigationService.pushNamed('/tapu-detail');
+              // --- Floating Action Buttons (Positioned just above bottom sheet) ---
+              AnimatedBuilder(
+                animation: _bottomSheetController,
+                builder: (context, child) {
+                  final sheetHeight = _bottomSheetController.isAttached
+                      ? _bottomSheetController.size
+                      : 0.18; // Default to initial size if not attached
+                  final screenHeight = MediaQuery.of(context).size.height;
+                  final bottomPosition =
+                      screenHeight * sheetHeight + 10; // 10px above the sheet
 
-                    // TODO: Navigate to Saved Pins Screen
-                  },
-                  backgroundColor: Color(0xFFF5BF4D),
-                  child: Image.network(Images.layersImg2),
-                ),
+                  return Positioned(
+                    bottom: bottomPosition,
+                    left: 16,
+                    child: FloatingActionButton(
+                      shape: CircleBorder(),
+                      heroTag: 'mood_fab',
+                      onPressed: () {
+                        NavigationService.pushNamed('/create-tapu');
+                        print('Smiley/Mood FAB tapped');
+                      },
+                      backgroundColor: Color(0xFF531DAB),
+                      child: Image.network(
+                        Images.addIcon,
+                        width: 30,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) =>
+                            const Icon(
+                          Icons.sentiment_dissatisfied,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              AnimatedBuilder(
+                animation: _bottomSheetController,
+                builder: (context, child) {
+                  final sheetHeight = _bottomSheetController.isAttached
+                      ? _bottomSheetController.size
+                      : 0.18; // Default to initial size if not attached
+                  final screenHeight = MediaQuery.of(context).size.height;
+                  final bottomPosition =
+                      screenHeight * sheetHeight + 10; // 10px above the sheet
+
+                  return Positioned(
+                    bottom: bottomPosition,
+                    right: 16,
+                    child: FloatingActionButton(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(40),
+                      ),
+                      heroTag: 'stack_fab',
+                      onPressed: () {
+                        // NavigationService.pushNamed('/tapu-detail');
+                        // TODO: Navigate to Saved Pins Screen
+                      },
+                      backgroundColor: Color(0xFFF5BF4D),
+                      child: Image.network(Images.layersImg2),
+                    ),
+                  );
+                },
               ),
 
               // --- Bottom UI Container (Sheet & Navigation) ---
@@ -440,38 +524,39 @@ class _MapViewScreenState extends State<MapViewScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // --- Filter Buttons (Always Visible) ---
-
-                          // --- All Tapus List (Always Visible) ---
+                          // --- All Tapus List (Scrollable) ---
                           Expanded(
-                            child: Consumer<TapuProvider>(
-                              builder: (context, tapuProvider, child) {
-                                final tapus = tapuProvider.nearbyTapus;
+                            child: SingleChildScrollView(
+                              controller: scrollController,
+                              padding: EdgeInsets.symmetric(horizontal: 16),
+                              child: Consumer<TapuProvider>(
+                                builder: (context, tapuProvider, child) {
+                                  final tapus = tapuProvider.nearbyTapus;
 
-                                if (tapus.isEmpty) {
-                                  return Center(
-                                    child: Text(
-                                      'No Tapus found nearby',
-                                      style: text14W400White(context),
-                                    ),
-                                  );
-                                }
-
-                                return ListView.builder(
-                                  controller: scrollController,
-                                  padding: EdgeInsets.symmetric(horizontal: 16),
-                                  itemCount: tapus.length,
-                                  itemBuilder: (context, index) {
-                                    final tapu = tapus[index];
-                                    return Container(
-                                      margin: EdgeInsets.only(bottom: 12),
-                                      child: MapDetailCard(
-                                        tapu: tapu,
+                                  if (tapus.isEmpty) {
+                                    return Center(
+                                      child: Padding(
+                                        padding: EdgeInsets.only(top: 50),
+                                        child: Text(
+                                          'No Tapus found nearby',
+                                          style: text14W400White(context),
+                                        ),
                                       ),
                                     );
-                                  },
-                                );
-                              },
+                                  }
+
+                                  return Column(
+                                    children: tapus.map((tapu) {
+                                      return Container(
+                                        margin: EdgeInsets.only(bottom: 12),
+                                        child: MapDetailCard(
+                                          tapu: tapu,
+                                        ),
+                                      );
+                                    }).toList(),
+                                  );
+                                },
+                              ),
                             ),
                           ),
                         ],
@@ -483,6 +568,80 @@ class _MapViewScreenState extends State<MapViewScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildCustomBottomNavBar(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.only(
+        top: 15,
+        bottom: MediaQuery.of(context).padding.bottom + 15,
+      ),
+      decoration: BoxDecoration(
+        color: Color(0xFF1D1F24),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildBottomNavItem('My Pins', Images.myPinsImg, () {
+            NavigationService.pushNamed('/my-pins');
+          }),
+          _buildCentralActionButton(() {
+            print('Central Action Button tapped (Tapus/Main)');
+            NavigationService.pushNamed('/tapu-pins');
+          }),
+          _buildBottomNavItem('New Pin', Images.newPinImg, () {
+            NavigationService.pushNamed('/create-pin');
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomNavItem(
+    String label,
+    String imageUrl,
+    VoidCallback onPressed,
+  ) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 21,
+            height: 21,
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) =>
+                  Icon(Icons.error, color: Colors.white),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCentralActionButton(VoidCallback onPressed) {
+    return SizedBox(
+      width: 48, // Make it a bit wider than others
+      height: 48, // Make it taller for the floating effect
+      child: FloatingActionButton(
+        shape: CircleBorder(),
+        heroTag: 'central_nav_fab',
+        onPressed: onPressed,
+        backgroundColor: Color(0xFFEBA145),
+        elevation: 5, // Yellow like the filter buttons
+        child: Icon(Icons.map, color: Colors.white, size: 24), // Tapus icon
+        // Lift it above the bottom nav
       ),
     );
   }

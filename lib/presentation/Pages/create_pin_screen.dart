@@ -1,3 +1,4 @@
+import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
@@ -335,7 +336,7 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                   Text(
+                  Text(
                     'Select Location',
                     style: GoogleFonts.nunitoSans(
                       fontSize: 20,
@@ -919,7 +920,7 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
                 AudioRecorderSection(
                   onAudioRecorded: _onAudioRecorded,
                   onAudioDeleted: _onAudioDeleted,
-                   // Don't show duplicate UI
+                  // Don't show duplicate UI
                 ),
                 const SizedBox(height: 20),
 
@@ -939,13 +940,22 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
                           padding: const EdgeInsets.only(right: 10),
                           child: Stack(
                             children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.file(
-                                  imageFile,
-                                  width: 100,
-                                  height: 100,
-                                  fit: BoxFit.cover,
+                              Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.file(
+                                    imageFile,
+                                    width: 100,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                  ),
                                 ),
                               ),
                               Positioned(
@@ -955,13 +965,15 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
                                   onTap: () => _removePhoto(index),
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(
-                                      Icons.close,
-                                      color: Colors.white,
-                                      size: 20,
+                                        shape: BoxShape.circle,
+                                        color: Colors.white),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(6.0),
+                                      child: Icon(
+                                        Icons.delete,
+                                        color: Colors.red,
+                                        size: 20,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -973,26 +985,29 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
                       // Add Photo Button
                       GestureDetector(
                         onTap: _addPhoto,
-                        child: Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            color: Color(0xFF2C3540),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: Colors.grey.withOpacity(0.5),
-                              style: BorderStyle.solid,
-                            ),
-                          ),
-                          child: const Center(
+                        child: DottedBorder(
+                          // Correct usage: parameters directly here
+                          borderType:
+                              BorderType.RRect, // This is a direct parameter
+                          radius: const Radius.circular(
+                              16), // This is a direct parameter
+                          dashPattern: const [
+                            8,
+                            4
+                          ], // This is a direct parameter
+                          strokeWidth: 2, // This is a direct parameter
+                          color: Colors.white, // This is a direct parameter
+                          child: Padding(
+                            padding: const EdgeInsets.all(34.0),
                             child: Icon(
-                              Icons.add_a_photo,
-                              color: Colors.white70,
-                              size: 40,
+                              Icons.add,
+                              color: Colors.white,
+                              size: 30,
+                              
                             ),
                           ),
                         ),
-                      ),
+                      )
                     ],
                   ),
                 ),

@@ -686,20 +686,25 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.frameBgColor,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14.0, vertical: 17),
-                              child: Icon(
-                                Icons.arrow_back_ios_new_rounded,
-                                color: Colors.white,
-                                size: 20,
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.frameBgColor,
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                            )),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14.0, vertical: 17),
+                                child: Icon(
+                                  Icons.arrow_back_ios_new_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              )),
+                        ),
                         Expanded(
                             child: Center(
                           child: Text("Create New Tapu",

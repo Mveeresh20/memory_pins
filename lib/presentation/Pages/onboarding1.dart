@@ -162,7 +162,7 @@ class _Onboarding1State extends State<Onboarding1> {
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04), // Dynamic horizontal padding
                       child: const OnboardingNextButton(
-                        text: "Get Started",
+                        text: "Next",
                         icon: Icons.arrow_forward_sharp,
                       ),
                     ),

@@ -267,26 +267,15 @@ class TapuDetailMapWidgetState extends State<TapuDetailMapWidget> {
       const size = Size(300, 300);
 
       // Draw shadow
-      final shadowPaint = Paint()
-        ..color = Colors.black.withOpacity(0.3)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15);
+      // final shadowPaint = Paint()
+      //   ..color = Colors.black.withOpacity(0.3)
+      //   ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 15);
 
-      canvas.drawCircle(
-        Offset(size.width / 2 + 4, size.height / 2 + 4),
-        100,
-        shadowPaint,
-      );
-
-      // Draw main purple circle for tapu
-      final paint = Paint()
-        ..color = const Color(0xFF531DAB)
-        ..style = PaintingStyle.fill;
-
-      canvas.drawCircle(
-        Offset(size.width / 2, size.height / 2),
-        100,
-        paint,
-      );
+      // canvas.drawCircle(
+      //   Offset(size.width / 2 + 4, size.height / 2 + 4),
+      //   100,
+      //   shadowPaint,
+      // );
 
       // Draw border
       final borderPaint = Paint()
@@ -399,7 +388,7 @@ class TapuDetailMapWidgetState extends State<TapuDetailMapWidget> {
       final borderPaint = Paint()
         ..color = Colors.white
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 10;
+        ..strokeWidth = 3; // Reduced from 10 to 3 for thinner border
 
       canvas.drawCircle(
         Offset(size.width / 2, size.height / 2),
@@ -477,7 +466,7 @@ class TapuDetailMapWidgetState extends State<TapuDetailMapWidget> {
         );
       }
 
-      // Draw mood icon circle
+      // Draw mood icon circle (white background)
       final moodPaint = Paint()
         ..color = Colors.white
         ..style = PaintingStyle.fill;
@@ -493,11 +482,11 @@ class TapuDetailMapWidgetState extends State<TapuDetailMapWidget> {
         moodPaint,
       );
 
-      // Draw mood icon border
+      // Draw mood icon border (black with opacity, 1px width)
       final moodBorderPaint = Paint()
-        ..color = Colors.grey[300]!
+        ..color = Colors.black.withOpacity(0.3) // Black with opacity
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3;
+        ..strokeWidth = 1; // 1px width
 
       canvas.drawCircle(
         moodCenter,
@@ -505,32 +494,32 @@ class TapuDetailMapWidgetState extends State<TapuDetailMapWidget> {
         moodBorderPaint,
       );
 
-      // Try to load and draw the mood image
+      // Try to load and draw the static red pin icon
       try {
-        if (pin.moodIconUrl.isNotEmpty && pin.moodIconUrl.startsWith('http')) {
-          final moodResponse = await http.get(Uri.parse(pin.moodIconUrl));
-          if (moodResponse.statusCode == 200) {
-            final moodCodec =
-                await ui.instantiateImageCodec(moodResponse.bodyBytes);
-            final moodFrameInfo = await moodCodec.getNextFrame();
-            final moodImage = moodFrameInfo.image;
+        print('Loading static red pin icon for mood position');
 
-            final moodRect = Rect.fromCircle(center: moodCenter, radius: 30);
-            final moodImagePaint = Paint();
-            canvas.saveLayer(moodRect, moodImagePaint);
-            canvas.clipPath(Path()..addOval(moodRect));
-            canvas.drawImageRect(
-              moodImage,
-              Rect.fromLTWH(0, 0, moodImage.width.toDouble(),
-                  moodImage.height.toDouble()),
-              moodRect,
-              moodImagePaint,
-            );
-            canvas.restore();
-          }
-        }
+        // Load the static image from assets
+        final ByteData data =
+            await rootBundle.load('assets/icons/red_pin_icon.png');
+        final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+        final frameInfo = await codec.getNextFrame();
+        final image = frameInfo.image;
+
+        // Draw the static image in circle
+        final moodRect = Rect.fromCircle(center: moodCenter, radius: 30);
+        final moodImagePaint = Paint();
+        canvas.saveLayer(moodRect, moodImagePaint);
+        canvas.clipPath(Path()..addOval(moodRect));
+        canvas.drawImageRect(
+          image,
+          Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+          moodRect,
+          moodImagePaint,
+        );
+        canvas.restore();
+        print('Static red pin icon loaded successfully');
       } catch (e) {
-        print('Error loading mood image: $e');
+        print('Error loading static red pin icon: $e');
         // Draw a placeholder mood icon
         final placeholderMoodPaint = Paint()
           ..color = Colors.orange

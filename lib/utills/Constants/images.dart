@@ -85,6 +85,15 @@ class Images {
   static const audioIcon = "assets/icons/audio_icon.png";
   static const redPinIcon = "assets/icons/red_pin_icon.png";
 
+  
+
+static const star= "assets/images/star.png";
+static const cunning= "assets/images/cunning.png";
+static const happy= "assets/images/happy.png";
+static const sad= "assets/images/sad.png";
+static const heart= "assets/images/heart.png";
+
+
 
   static const winklingImg =
       "https://ik.imagekit.io/sports123/03560355ce5efb79159bf84893fab60e86b27372.gif?updatedAt=1750093280947";

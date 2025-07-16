@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:memory_pins_app/models/saved_pin_item.dart';
 import 'package:memory_pins_app/presentation/Pages/create_pin_screen.dart';
+import 'package:memory_pins_app/presentation/Pages/home_screen.dart';
 import 'package:memory_pins_app/presentation/Widgets/saved_pin_card.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
@@ -8,6 +9,7 @@ import 'package:memory_pins_app/utills/Constants/label_text_style.dart';
 import 'package:memory_pins_app/providers/pin_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:memory_pins_app/models/pin.dart';
+import 'package:memory_pins_app/services/navigation_service.dart';
 
 class SavedPins extends StatefulWidget {
   const SavedPins({super.key});
@@ -82,20 +84,25 @@ class _SavedPinsState extends State<SavedPins> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.frameBgColor,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14.0, vertical: 17),
-                              child: Icon(
-                                Icons.arrow_back_ios_new_rounded,
-                                color: Colors.white,
-                                size: 20,
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.frameBgColor,
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                            )),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14.0, vertical: 17),
+                                child: Icon(
+                                  Icons.arrow_back_ios_new_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              )),
+                        ),
                         SizedBox(width: 12),
                         Text("Saved Pins", style: text18W700White(context)),
                       ],
@@ -182,18 +189,15 @@ class _SavedPinsState extends State<SavedPins> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildBottomNavItem('My Pins', Images.myPinsImg, () {}),
+            _buildBottomNavItem('My Pins', Images.myPinsImg, () {
+              NavigationService.pushNamed('/my-pins');
+            }),
             _buildCentralActionButton(() {
               print('Central Action Button tapped (Tapus/Main)');
-              // TODO: Navigate to Tapus Map Screen or main action
+              NavigationService.pushNamed('/home');
             }),
             _buildBottomNavItem('New Pin', Images.newPinImg, () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CreatePinScreen(),
-                ),
-              );
+              NavigationService.pushNamed('/create-pin');
             }),
           ],
         ),

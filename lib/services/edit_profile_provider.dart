@@ -290,13 +290,17 @@ class EditProfileProvider extends ChangeNotifier {
 
   Future<ProfileDetails?> fetchUserProfileDetails() async {
     try {
-      // Only set loading if not already loading to avoid multiple notifications
-      if (!_isLoading) {
-        setLoading(true);
-      }
+      // Set build phase to true to prevent notifications during build
+      setBuildPhase(true);
       setError(false);
 
       String? userId = UserService().getCurrentUserId();
+      if (userId == null) {
+        log('User is not authenticated');
+        setBuildPhase(false);
+        setError(true);
+        return null;
+      }
       if (userId == null) {
         log('User is not authenticated');
         setLoading(false);
@@ -334,11 +338,13 @@ class EditProfileProvider extends ChangeNotifier {
       profilePicture = profileDetails?.imageProfile;
       mobileNumberController.text = profileDetails?.mobileNumber ?? '';
 
-      setLoading(false);
+      // Reset build phase and notify listeners
+      setBuildPhase(false);
+      notifyListeners();
       return profileDetails;
     } catch (e) {
       log('Error fetching profile details: $e');
-      setLoading(false);
+      setBuildPhase(false);
       setError(true);
       return null;
     }

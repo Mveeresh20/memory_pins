@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:memory_pins_app/models/pin.dart';
 import 'package:memory_pins_app/models/pin_detail.dart';
@@ -38,20 +39,32 @@ class _HomeScreenState extends State<HomeScreen> {
   Pin? _selectedPin;
   final DraggableScrollableController _bottomSheetController =
       DraggableScrollableController();
+  bool _isFirstLoad = true; // Add first load state
 
   @override
   void initState() {
     super.initState();
     // Load pins when screen initializes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadPins();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadPins(); // Wait for pins to load
       _getCurrentCity(); // Get current city
     });
   }
 
-  void _loadPins() {
+  Future<void> _loadPins() async {
     final pinProvider = Provider.of<PinProvider>(context, listen: false);
-    pinProvider.initialize(); // This will load all pin data
+    if (!pinProvider.isInitialized) {
+      print('HomeScreen - Initializing PinProvider for first time...');
+      await pinProvider.initialize(); // Wait for initialization to complete
+      print('HomeScreen - PinProvider initialization completed');
+    }
+
+    // Mark first load as complete
+    if (_isFirstLoad) {
+      setState(() {
+        _isFirstLoad = false;
+      });
+    }
   }
 
   // Get current city based on user's location
@@ -187,433 +200,620 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[100], // A light background for the map
-      bottomNavigationBar: _buildCustomBottomNavBar(context),
-      body: Consumer2<PinProvider, UserProvider>(
-        builder: (context, pinProvider, userProvider, child) {
-          final pins = pinProvider.filteredPins;
-          final isLoading = pinProvider.isLoading;
-          final currentUser = userProvider.currentUser;
-
-          return Stack(
-            children: [
-              // --- Google Maps Background ---
-              Positioned.fill(
-                child: HomeMapWidget(
-                  key: _mapKey,
-                  pins: pins,
-                  onPinTap: (selectedPin) {
-                    print('Tapped on pin: ${selectedPin.title}');
-                    _showPinDetails(selectedPin);
-                  },
-                  isLoading: isLoading,
-                  getPinDistance: (pin) {
-                    final pinProvider =
-                        Provider.of<PinProvider>(context, listen: false);
-                    return pinProvider.getPinDistance(pin);
-                  },
+  void showExitDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: 270,
+            height: 122.5,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E2730),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.18),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
                 ),
-              ),
-
-              // --- Loading Overlay ---
-              if (isLoading)
-                Container(
-                  color: Colors.black.withOpacity(0.3),
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                    ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                // Title and subtitle
+                Padding(
+                  padding: const EdgeInsets.only(
+                    top: 18,
+                    left: 16,
+                    right: 16,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 238,
+                        child: Text(
+                          "Exit App",
+                          style: const TextStyle(
+                            fontFamily: "Roboto",
+                            fontWeight: FontWeight.w600,
+                            fontSize: 17,
+                            height: 22 / 17,
+                            letterSpacing: -0.41,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      SizedBox(
+                        width: 238,
+                        child: Text(
+                          "Are you sure you want to exit app?",
+                          style: const TextStyle(
+                            fontFamily: "Roboto",
+                            fontWeight: FontWeight.w400,
+                            fontSize: 13,
+                            height: 18 / 13,
+                            letterSpacing: -0.08,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-
-              // --- Map controls and overlays will be added here ---
-
-              // --- Map Control Buttons ---
-              Positioned(
-                top: 200, // Position below location selector
-                right: 16,
-                child: Column(
+                const Spacer(),
+                // Buttons
+                Row(
                   children: [
-                    // Zoom In Button
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+                    // Not Now
+                    SizedBox(
+                      width: 134.75,
+                      height: 44,
+                      child: TextButton(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 11,
+                            horizontal: 8,
                           ),
-                        ],
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.add, color: Colors.black87),
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.only(
+                              bottomLeft: Radius.circular(14),
+                            ),
+                          ),
+                          foregroundColor: const Color(0xFF007AFF),
+                          backgroundColor: Colors.transparent,
+                          textStyle: const TextStyle(
+                            fontFamily: "Roboto",
+                            fontWeight: FontWeight.w400,
+                            fontSize: 17,
+                            letterSpacing: -0.41,
+                          ),
+                        ),
                         onPressed: () {
-                          _mapKey.currentState?.zoomIn();
+                          Navigator.of(context).pop();
                         },
-                        iconSize: 20,
-                        padding: const EdgeInsets.all(8),
+                        child: const Text("Not Now"),
                       ),
                     ),
-                    // Zoom Out Button
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+                    // Yes
+                    SizedBox(
+                      width: 134.75,
+                      height: 44,
+                      child: TextButton(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 11,
+                            horizontal: 8,
                           ),
-                        ],
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.remove, color: Colors.black87),
-                        onPressed: () {
-                          _mapKey.currentState?.zoomOut();
-                        },
-                        iconSize: 20,
-                        padding: const EdgeInsets.all(8),
-                      ),
-                    ),
-                    // Location Button
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.only(
+                              bottomRight: Radius.circular(14),
+                            ),
                           ),
-                        ],
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.my_location,
-                            color: Colors.black87),
+                          foregroundColor: const Color(0xFFF23943),
+                          backgroundColor: Colors.transparent,
+                          textStyle: const TextStyle(
+                            fontFamily: "Roboto",
+                            fontWeight: FontWeight.w400,
+                            fontSize: 17,
+                            letterSpacing: -0.41,
+                          ),
+                        ),
                         onPressed: () {
-                          _mapKey.currentState?.centerOnUserLocation();
+                          Navigator.of(context).pop();
+                          SystemNavigator.pop(); // This will exit the app
                         },
-                        iconSize: 20,
-                        padding: const EdgeInsets.all(8),
+                        child: const Text("Yes"),
                       ),
                     ),
                   ],
                 ),
-              ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-              // --- Top Bar (Custom AppBar) ---
-              Positioned(
-                top: 60, // Adjust for status bar padding
-                left: 0,
-                right: 0,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 10,
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () async {
+        showExitDialog(context);
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey[100], // A light background for the map
+        bottomNavigationBar: _buildCustomBottomNavBar(context),
+        body: Consumer2<PinProvider, UserProvider>(
+          builder: (context, pinProvider, userProvider, child) {
+            final pins = pinProvider.filteredPins;
+            final isLoading = pinProvider.isLoading;
+            final isInitialized = pinProvider.isInitialized;
+            final currentUser = userProvider.currentUser;
+
+            print('HomeScreen - Building with ${pins.length} filtered pins');
+            print('HomeScreen - Filter type: ${pinProvider.filterType}');
+            print(
+                'HomeScreen - Total nearby pins: ${pinProvider.nearbyPins.length}');
+
+            return Stack(
+              children: [
+                // --- Google Maps Background ---
+                Positioned.fill(
+                  child: HomeMapWidget(
+                    key: _mapKey,
+                    pins: pins,
+                    onPinTap: (selectedPin) {
+                      print('Tapped on pin: ${selectedPin.title}');
+                      _showPinDetails(selectedPin);
+                    },
+                    isLoading: isLoading,
+                    getPinDistance: (pin) {
+                      final pinProvider =
+                          Provider.of<PinProvider>(context, listen: false);
+                      return pinProvider.getPinDistance(pin);
+                    },
+                  ),
+                ),
+
+                // --- Loading Overlay ---
+                if ((isLoading && !isInitialized) || _isFirstLoad)
+                  Container(
+                    color: Colors.black.withOpacity(0.3),
+                    child: const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            color: Colors.white,
                           ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[700]?.withOpacity(0.8),
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: const Text(
-                            'Pins',
-                            textAlign: TextAlign.center,
+                          SizedBox(height: 16),
+                          Text(
+                            'Loading pins...',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                      const SizedBox(width: 16),
-                      Consumer<EditProfileProvider>(
-                        builder: (context, provider, child) {
-                          return GestureDetector(
-                            onTap: () {
-                              NavigationService.pushNamed('/profile');
-                            },
-                            child: CircleAvatar(
-                              radius: 20,
-                              backgroundImage:
-                                  NetworkImage(provider.getProfileImageUrl()),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
 
-              // --- Location Selector (New Jersey) ---
-              Positioned(
-                top: 130, // Position relative to top bar
-                left: 16,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Color(0xFFEDDCFF),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.black.withOpacity(0.2)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                // --- Map controls and overlays will be added here ---
+
+                // --- Map Control Buttons ---
+                Positioned(
+                  top: 200, // Position below location selector
+                  right: 16,
+                  child: Column(
                     children: [
-                      Image.network(Images.earthImg, height: 20),
-                      const SizedBox(width: 6),
-                      Text(
-                        _currentCity,
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // --- Floating Action Buttons (Positioned just above bottom sheet) ---
-              AnimatedBuilder(
-                animation: _bottomSheetController,
-                builder: (context, child) {
-                  final sheetHeight = _bottomSheetController.isAttached
-                      ? _bottomSheetController.size
-                      : 0.18; // Default to initial size if not attached
-                  final screenHeight = MediaQuery.of(context).size.height;
-                  final bottomPosition =
-                      screenHeight * sheetHeight + 10; // 10px above the sheet
-
-                  return Positioned(
-                    bottom: bottomPosition,
-                    left: 16,
-                    child: FloatingActionButton(
-                      shape: CircleBorder(),
-                      heroTag: 'mood_fab',
-                      onPressed: () {
-                        print('Smiley/Mood FAB tapped');
-                        // TODO: Navigate to mood/tapu creation
-                      },
-                      backgroundColor: Color(0xFF531DAB),
-                      child: Image.network(
-                        Images.smileImg,
-                        width: 30,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return const Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(
-                          Icons.sentiment_dissatisfied,
-                          color: Colors.red,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              AnimatedBuilder(
-                animation: _bottomSheetController,
-                builder: (context, child) {
-                  final sheetHeight = _bottomSheetController.isAttached
-                      ? _bottomSheetController.size
-                      : 0.18; // Default to initial size if not attached
-                  final screenHeight = MediaQuery.of(context).size.height;
-                  final bottomPosition =
-                      screenHeight * sheetHeight + 10; // 10px above the sheet
-
-                  return Positioned(
-                    bottom: bottomPosition,
-                    right: 16,
-                    child: FloatingActionButton(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(40),
-                      ),
-                      heroTag: 'stack_fab',
-                      onPressed: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => MapViewScreen()));
-                      },
-                      backgroundColor: Color(0xFFF5BF4D),
-                      child: Image.network(Images.layersImg),
-                    ),
-                  );
-                },
-              ),
-
-              // --- Bottom UI Container (Sheet & Navigation) ---
-              Align(
-                alignment: Alignment.bottomCenter,
-                child: DraggableScrollableSheet(
-                  controller: _bottomSheetController,
-                  initialChildSize:
-                      0.18, // Reduced to make space for bottom nav
-                  minChildSize: 0.18, // Minimum size to show filters
-                  maxChildSize: 0.65, // Reduced max size to prevent overflow
-                  builder: (context, scrollController) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Color(0xFF15212F),
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(30),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          // Drag handle
-                          const SizedBox(height: 10),
-                          Container(
-                            width: 48,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              color: Color(0xFFD4D4D4),
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // --- Filter Buttons (Always Visible) ---
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedFilter = 'Nearby';
-                                    });
-                                    pinProvider.setFilterType('nearby');
-                                    _mapKey.currentState?.refreshPins();
-                                  },
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: _selectedFilter == 'Nearby'
-                                          ? Color(0xFFF5BF4D)
-                                          : Color(0xFFFFECC3),
-                                      borderRadius: BorderRadius.circular(57),
-                                      border: Border.all(
-                                          width: 1, color: Colors.white),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 16,
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Image.network(Images.mapMarketImg,
-                                              height: 16),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            "Nearby",
-                                            style: GoogleFonts.nunitoSans(
-                                              color: Colors.black,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: 24),
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedFilter = 'More than 5 KM';
-                                    });
-                                    pinProvider.setFilterType('far');
-                                    _mapKey.currentState?.refreshPins();
-                                  },
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: _selectedFilter == 'More than 5 KM'
-                                          ? Color(0xFFF5BF4D)
-                                          : Color(0xFFFFECC3),
-                                      borderRadius: BorderRadius.circular(57),
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 16,
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Image.network(Images.mapMarketImg,
-                                              height: 16),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            "More than 5 KM",
-                                            style: GoogleFonts.nunitoSans(
-                                              color: Colors.black,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          SizedBox(height: 24),
-
-                          // --- Pin Details Content (Scrollable) ---
-                          if (_selectedPin != null) ...[
-                            const SizedBox(height: 16),
-                            // Pin details content
-                            Expanded(
-                              child: SingleChildScrollView(
-                                controller: scrollController,
-                                padding: EdgeInsets.symmetric(horizontal: 16),
-                                child: _PinDetailsContent(
-                                  pin: _selectedPin!,
-                                  onSend: () =>
-                                      _navigateToPinDetail(_selectedPin!),
-                                ),
-                              ),
+                      // Zoom In Button
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
                             ),
                           ],
-                        ],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.add, color: Colors.black87),
+                          onPressed: () {
+                            _mapKey.currentState?.zoomIn();
+                          },
+                          iconSize: 20,
+                          padding: const EdgeInsets.all(8),
+                        ),
+                      ),
+                      // Zoom Out Button
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.remove, color: Colors.black87),
+                          onPressed: () {
+                            _mapKey.currentState?.zoomOut();
+                          },
+                          iconSize: 20,
+                          padding: const EdgeInsets.all(8),
+                        ),
+                      ),
+                      // Location Button
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.my_location,
+                              color: Colors.black87),
+                          onPressed: () {
+                            _mapKey.currentState?.centerOnUserLocation();
+                          },
+                          iconSize: 20,
+                          padding: const EdgeInsets.all(8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // --- Top Bar (Custom AppBar) ---
+                Positioned(
+                  top: 60, // Adjust for status bar padding
+                  left: 0,
+                  right: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[700]?.withOpacity(0.8),
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            child: const Text(
+                              'Pins',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Consumer<EditProfileProvider>(
+                          builder: (context, provider, child) {
+                            return GestureDetector(
+                              onTap: () {
+                                NavigationService.pushNamed('/profile');
+                              },
+                              child: CircleAvatar(
+                                radius: 20,
+                                backgroundImage:
+                                    NetworkImage(provider.getProfileImageUrl()),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // --- Location Selector (New Jersey) ---
+                Positioned(
+                  top: 130, // Position relative to top bar
+                  left: 16,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFEDDCFF),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.black.withOpacity(0.2)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.network(Images.earthImg, height: 20),
+                        const SizedBox(width: 6),
+                        Text(
+                          _currentCity,
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // --- Floating Action Buttons (Positioned just above bottom sheet) ---
+                AnimatedBuilder(
+                  animation: _bottomSheetController,
+                  builder: (context, child) {
+                    final sheetHeight = _bottomSheetController.isAttached
+                        ? _bottomSheetController.size
+                        : 0.18; // Default to initial size if not attached
+                    final screenHeight = MediaQuery.of(context).size.height;
+                    final bottomPosition =
+                        screenHeight * sheetHeight + 10; // 10px above the sheet
+
+                    return Positioned(
+                      bottom: bottomPosition,
+                      left: 16,
+                      child: FloatingActionButton(
+                        shape: CircleBorder(),
+                        heroTag: 'mood_fab',
+                        onPressed: () {
+                          print('Smiley/Mood FAB tapped');
+                          // TODO: Navigate to mood/tapu creation
+                        },
+                        backgroundColor: Color(0xFF531DAB),
+                        child: Image.network(
+                          Images.smileImg,
+                          width: 30,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(
+                            Icons.sentiment_dissatisfied,
+                            color: Colors.red,
+                          ),
+                        ),
                       ),
                     );
                   },
                 ),
-              ),
-            ],
-          );
-        },
+                AnimatedBuilder(
+                  animation: _bottomSheetController,
+                  builder: (context, child) {
+                    final sheetHeight = _bottomSheetController.isAttached
+                        ? _bottomSheetController.size
+                        : 0.18; // Default to initial size if not attached
+                    final screenHeight = MediaQuery.of(context).size.height;
+                    final bottomPosition =
+                        screenHeight * sheetHeight + 10; // 10px above the sheet
+
+                    return Positioned(
+                      bottom: bottomPosition,
+                      right: 16,
+                      child: FloatingActionButton(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(40),
+                        ),
+                        heroTag: 'stack_fab',
+                        onPressed: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => MapViewScreen()));
+                        },
+                        backgroundColor: Color(0xFFF5BF4D),
+                        child: Image.network(Images.layersImg),
+                      ),
+                    );
+                  },
+                ),
+
+                // --- Bottom UI Container (Sheet & Navigation) ---
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: DraggableScrollableSheet(
+                    controller: _bottomSheetController,
+                    initialChildSize:
+                        0.18, // Reduced to make space for bottom nav
+                    minChildSize: 0.18, // Minimum size to show filters
+                    maxChildSize: 0.65, // Reduced max size to prevent overflow
+                    builder: (context, scrollController) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Color(0xFF15212F),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(30),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            // Drag handle
+                            const SizedBox(height: 10),
+                            Container(
+                              width: 48,
+                              height: 5,
+                              decoration: BoxDecoration(
+                                color: Color(0xFFD4D4D4),
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // --- Filter Buttons (Always Visible) ---
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      print(
+                                          'HomeScreen - Nearby filter button pressed');
+                                      setState(() {
+                                        _selectedFilter = 'Nearby';
+                                      });
+                                      pinProvider.setFilterType('nearby');
+
+                                      // Force refresh with a small delay to ensure filter is applied
+                                      Future.delayed(
+                                          Duration(milliseconds: 150), () {
+                                        print(
+                                            'HomeScreen - Refreshing map after filter change');
+                                        _mapKey.currentState?.refreshPins();
+                                      });
+                                    },
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: _selectedFilter == 'Nearby'
+                                            ? Color(0xFFF5BF4D)
+                                            : Color(0xFFFFECC3),
+                                        borderRadius: BorderRadius.circular(57),
+                                        border: Border.all(
+                                            width: 1, color: Colors.white),
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 16,
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Image.network(Images.mapMarketImg,
+                                                height: 16),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              "Nearby",
+                                              style: GoogleFonts.nunitoSans(
+                                                color: Colors.black,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 24),
+                                  GestureDetector(
+                                    onTap: () {
+                                      print(
+                                          'HomeScreen - More than 5KM filter button pressed');
+                                      setState(() {
+                                        _selectedFilter = 'More than 5 KM';
+                                      });
+                                      pinProvider.setFilterType('far');
+
+                                      // Force refresh with a small delay to ensure filter is applied
+                                      Future.delayed(
+                                          Duration(milliseconds: 150), () {
+                                        print(
+                                            'HomeScreen - Refreshing map after filter change');
+                                        _mapKey.currentState?.refreshPins();
+                                      });
+                                    },
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color:
+                                            _selectedFilter == 'More than 5 KM'
+                                                ? Color(0xFFF5BF4D)
+                                                : Color(0xFFFFECC3),
+                                        borderRadius: BorderRadius.circular(57),
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 16,
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Image.network(Images.mapMarketImg,
+                                                height: 16),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              "More than 5 KM",
+                                              style: GoogleFonts.nunitoSans(
+                                                color: Colors.black,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            SizedBox(height: 24),
+
+                            // --- Pin Details Content (Scrollable) ---
+                            if (_selectedPin != null) ...[
+                              const SizedBox(height: 16),
+                              // Pin details content
+                              Expanded(
+                                child: SingleChildScrollView(
+                                  controller: scrollController,
+                                  padding: EdgeInsets.symmetric(horizontal: 16),
+                                  child: _PinDetailsContent(
+                                    pin: _selectedPin!,
+                                    onSend: () =>
+                                        _navigateToPinDetail(_selectedPin!),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

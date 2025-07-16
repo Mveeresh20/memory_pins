@@ -281,25 +281,53 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Header
-                      Padding(
+
+                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Nearby Pins (${_nearbyPins.length})',
+                              '${_creatorUsername ?? 'Loading...'}\'s Tapu',
                               style: text18W700White(context),
                             ),
-                            if (_error != null)
-                              Icon(
-                                Icons.error_outline,
-                                color: Colors.red,
-                                size: 20,
-                              ),
+                            Row(
+                              children: [
+                                Image.asset(
+                                  Images.locationRedIcon,
+                                  width: 20,
+                                  height: 20,
+                                  fit: BoxFit.cover,
+                                ),
+                                Text(
+                                  '${_nearbyPins.length} Pins',
+                                  style: text18W700White(context),
+                                ),
+                              ],
+                            )
                           ],
                         ),
                       ),
+
+                      // Header
+                      // Padding(
+                      //   padding: const EdgeInsets.symmetric(horizontal: 16),
+                      //   child: Row(
+                      //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      //     children: [
+                      //       Text(
+                      //         'Nearby Pins (${_nearbyPins.length})',
+                      //         style: text18W700White(context),
+                      //       ),
+                      //       if (_error != null)
+                      //         Icon(
+                      //           Icons.error_outline,
+                      //           color: Colors.red,
+                      //           size: 20,
+                      //         ),
+                      //     ],
+                      //   ),
+                      // ),
 
                       const SizedBox(height: 16),
 

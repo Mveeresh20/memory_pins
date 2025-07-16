@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:get/get_connect/http/src/utils/utils.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:memory_pins_app/services/edit_profile_provider.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
@@ -29,7 +31,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void initState() {
     super.initState();
-    _loadUserProfile();
+    // Delay profile loading to avoid build phase conflicts
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserProfile();
+    });
   }
 
   Future<void> _loadUserProfile() async {
@@ -39,7 +44,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
       _nameController.text = provider.profileDetails?.userName ?? '';
       _emailController.text = provider.profileDetails?.email ?? '';
       // Add fallback for mobile number - show empty string if null
-      _phoneController.text = provider.profileDetails?.mobileNumber ?? '+91 xxxxxxx';
+      _phoneController.text =
+          provider.profileDetails?.mobileNumber ?? '+91 xxxxxxx';
     });
   }
 
@@ -72,9 +78,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       backgroundColor: Color(0xFF15212F),
       body: SingleChildScrollView(
         child: SafeArea(
-          child: Form(
-            key: _formKey,
-            child: Column(children: [
+          child: Column(children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16)
                     .copyWith(top: 16),
@@ -84,17 +88,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.frameBgColor,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(15),
-                            child: Icon(
-                              Icons.arrow_back_ios_new_rounded,
-                              color: Colors.white,
-                              size: 20,
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.frameBgColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(15),
+                              child: Icon(
+                                Icons.arrow_back_ios_new_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                             ),
                           ),
                         ),
@@ -198,88 +207,213 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Name",
-                            style: text16W600White(context),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1D2B36),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.2),
-                                width: 1,
-                              ),
+                      Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Name",
+                              style: text16W600White(context),
                             ),
-                            child: TextField(
+                            const SizedBox(height: 8),
+                            TextFormField(
                               style: text14W600White(context),
                               controller: _nameController,
                               decoration: InputDecoration(
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.all(8),
+                                filled: true,
+                                fillColor: const Color(0xFF1D2B36),
+                                contentPadding: EdgeInsets.all(16),
                                 hintText: "Enter your name",
                                 hintStyle: text14W600White(context),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.white.withOpacity(0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.white.withOpacity(0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.white.withOpacity(0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Color(0xFFDAA520),
+                                    width: 1,
+                                  ),
+                                ),
+                                focusedErrorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Color(0xFFDAA520),
+                                    width: 1,
+                                  ),
+                                ),
+                                errorStyle: TextStyle(color: Color(0xFFDAA520)),
                               ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter a name';
+                                }
+                                return null;
+                              },
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            "Email",
-                            style: text16W600White(context),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1D2B36),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.2),
-                                width: 1,
-                              ),
+                            const SizedBox(height: 16),
+                            Text(
+                              "Email",
+                              style: text16W600White(context),
                             ),
-                            child: TextField(
+                            const SizedBox(height: 8),
+                            TextFormField(
                               style: text14W600White(context),
                               controller: _emailController,
                               decoration: InputDecoration(
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.all(8),
+                                filled: true,
+                                fillColor: const Color(0xFF1D2B36),
+                                contentPadding: EdgeInsets.all(16),
                                 hintText: "Enter your email",
                                 hintStyle: text14W600White(context),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.white.withOpacity(0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.white.withOpacity(0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.white.withOpacity(0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Color(0xFFDAA520),
+                                    width: 1,
+                                  ),
+                                ),
+                                focusedErrorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Color(0xFFDAA520),
+                                    width: 1,
+                                  ),
+                                ),
+                                errorStyle: TextStyle(color: Color(0xFFDAA520)),
                               ),
+                              validator: (value) {
+                                const pattern =
+                                    r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$';
+                                final regex = RegExp(pattern);
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter an email';
+                                }
+                                if (!regex.hasMatch(value)) {
+                                  return 'Enter a valid email address';
+                                }
+                                return null;
+                              },
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            "Phone Number",
-                            style: text16W600White(context),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1D2B36),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.2),
-                                width: 1,
-                              ),
+                            const SizedBox(height: 16),
+                            Text(
+                              "Phone Number",
+                              style: text16W600White(context),
                             ),
-                            child: TextField(
+                            const SizedBox(height: 8),
+                            TextFormField(
                               style: text14W600White(context),
                               controller: _phoneController,
                               keyboardType: TextInputType.phone,
                               decoration: InputDecoration(
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.all(8),
+                                filled: true,
+                                fillColor: const Color(0xFF1D2B36),
+                                contentPadding: EdgeInsets.all(16),
                                 hintText: "Enter your phone number",
                                 hintStyle: text14W600White(context),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.white.withOpacity(0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.white.withOpacity(0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Colors.white.withOpacity(0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Color(0xFFDAA520),
+                                    width: 1,
+                                  ),
+                                ),
+                                focusedErrorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: Color(0xFFDAA520),
+                                    width: 1,
+                                  ),
+                                ),
+                                errorStyle: TextStyle(color: Color(0xFFDAA520)),
                               ),
-                            ),
-                          )
-                        ],
+                              validator: (value) {
+                                final trimmed = value?.trim() ?? '';
+
+                                if (trimmed.isEmpty) {
+                                  return 'Please enter a contact number';
+                                }
+
+                                if (trimmed.length != 10) {
+                                  return 'Mobile number must be 10 digits';
+                                }
+
+                                final phoneRegExp = RegExp(r'^[6-9]\d{9}$');
+                                if (!phoneRegExp.hasMatch(trimmed)) {
+                                  return 'Enter a valid 10-digit mobile number';
+                                }
+
+                                return null;
+                              },
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(
+                                    10), // ⛔ Max 10 digits
+                              ],
+                            )
+                          ],
+                        ),
                       ),
                       SizedBox(height: 70),
 
@@ -301,12 +435,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
                               onPressed: provider.isLoading
                                   ? null
                                   : () async {
-                                      await provider.updateUserNameAndEmail(
-                                        _nameController.text,
-                                        _emailController.text,
-                                        _phoneController.text,
-                                        context,
-                                      );
+                                      if (_formKey.currentState!.validate()) {
+                                        await provider.updateUserNameAndEmail(
+                                          _nameController.text,
+                                          _emailController.text,
+                                          _phoneController.text,
+                                          context,
+                                        );
+                                      }
                                     },
                               child: provider.isLoading
                                   ? CircularProgressIndicator()
@@ -355,7 +491,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             ]),
           ),
         ),
-      ),
+      
     );
   }
 

@@ -5,6 +5,7 @@ import 'package:memory_pins_app/models/pin.dart';
 import 'package:memory_pins_app/models/map_cordinates.dart';
 import 'package:memory_pins_app/services/firebase_service.dart';
 import 'package:memory_pins_app/services/location_service.dart';
+import 'package:memory_pins_app/utills/Constants/performance_monitor.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
@@ -18,10 +19,15 @@ class TapuProvider with ChangeNotifier {
   List<Tapu> _nearbyTapus = []; // New list for nearby tapus
   List<Pin> _tapuPins = []; // Pins within a selected Tapu
   bool _isLoading = false;
+  bool _isInitialized = false;
   String? _error;
   double _currentLatitude = 0.0;
   double _currentLongitude = 0.0;
   double _tapuRadius = 50.0;
+
+  // Cache for distance calculations
+  Map<String, double> _distanceCache = {};
+  Map<String, String> _distanceTextCache = {};
 
   // Getters
   List<Tapus> get userTapus => _userTapus;
@@ -29,16 +35,49 @@ class TapuProvider with ChangeNotifier {
   List<Tapu> get nearbyTapus => _nearbyTapus;
   List<Pin> get tapuPins => _tapuPins;
   bool get isLoading => _isLoading;
+  bool get isInitialized => _isInitialized;
   String? get error => _error;
   double get currentLatitude => _currentLatitude;
   double get currentLongitude => _currentLongitude;
   double get tapuRadius => _tapuRadius;
 
-  // Initialize provider
+  // Initialize provider with lazy loading
   Future<void> initialize() async {
-    await _getCurrentLocation();
-    await loadUserTapus();
-    await loadNearbyTapus(_tapuRadius);
+    if (_isInitialized) return;
+
+    return PerformanceMonitor.timeAsync('TapuProvider.initialize', () async {
+      try {
+        _isLoading = true;
+        _error = null;
+        notifyListeners();
+
+        // Get current location first
+        await _getCurrentLocation();
+
+        // Load only nearby tapus initially (most important for map view screen)
+        await loadNearbyTapus(_tapuRadius);
+
+        _isInitialized = true;
+        _isLoading = false;
+        notifyListeners();
+
+        // Load other data in background
+        _loadBackgroundData();
+      } catch (e) {
+        _error = 'Failed to initialize: $e';
+        _isLoading = false;
+        notifyListeners();
+      }
+    });
+  }
+
+  // Load non-critical data in background
+  Future<void> _loadBackgroundData() async {
+    try {
+      await loadUserTapus();
+    } catch (e) {
+      print('Background data loading failed: $e');
+    }
   }
 
   // Get current location
@@ -57,17 +96,10 @@ class TapuProvider with ChangeNotifier {
   // Load user's tapus
   Future<void> loadUserTapus() async {
     try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
       _userTapus = await _firebaseService.getUserTapus();
-      _isLoading = false;
       notifyListeners();
     } catch (e) {
-      _error = 'Failed to load user tapus: $e';
-      _isLoading = false;
-      notifyListeners();
+      print('Failed to load user tapus: $e');
     }
   }
 
@@ -228,91 +260,200 @@ class TapuProvider with ChangeNotifier {
 
   // Load nearby tapus within specified radius (0-50KM range)
   Future<void> loadNearbyTapus(double radiusInKm) async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
+    return PerformanceMonitor.timeAsync('TapuProvider.loadNearbyTapus',
+        () async {
+      try {
+        _isLoading = true;
+        _error = null;
+        notifyListeners();
 
-      print(
-          'Loading nearby tapus within ${radiusInKm}KM from current location: $_currentLatitude, $_currentLongitude');
-
-      // Get all tapus from Firebase (not just user tapus)
-      final allTapus = await _firebaseService.getAllTapus();
-      print('Found ${allTapus.length} total tapus in Firebase');
-
-      // Filter tapus within 0-50KM range and calculate statistics
-      _nearbyTapus = [];
-      for (final tapus in allTapus) {
-        final distance = getDistance(
-          _currentLatitude,
-          _currentLongitude,
-          tapus.centerCoordinates.latitude,
-          tapus.centerCoordinates.longitude,
-        );
-
-        print('Tapu "${tapus.name}" distance check:');
-        print('  Current location: $_currentLatitude, $_currentLongitude');
         print(
-            '  Tapu location: ${tapus.centerCoordinates.latitude}, ${tapus.centerCoordinates.longitude}');
-        print('  Calculated distance: ${distance.toStringAsFixed(3)}km');
-        print('  Radius limit: ${radiusInKm}km');
-        print('  Within range: ${distance >= 0 && distance <= radiusInKm}');
+            'Loading nearby tapus within ${radiusInKm}KM from current location: $_currentLatitude, $_currentLongitude');
 
-        // Show tapus within 0-50KM range
-        if (distance >= 0 && distance <= radiusInKm) {
+        // Get all tapus from Firebase (not just user tapus)
+        final allTapus = await _firebaseService.getAllTapus();
+        print('Found ${allTapus.length} total tapus in Firebase');
+
+        // Filter tapus within 0-50KM range and calculate statistics
+        _nearbyTapus = [];
+
+        // Pre-calculate distances for all tapus
+        _precalculateTapuDistances(allTapus);
+
+        for (final tapus in allTapus) {
+          final distance = _distanceCache[
+                  '${_currentLatitude},${_currentLongitude},${tapus.centerCoordinates.latitude},${tapus.centerCoordinates.longitude}'] ??
+              0.0;
+
+          print('Tapu "${tapus.name}" distance check:');
+          print('  Current location: $_currentLatitude, $_currentLongitude');
           print(
-              'Adding tapu "${tapus.name}" to nearby list (${distance.toStringAsFixed(1)}km)');
-          print('  Tapus emojis: ${tapus.emojis}');
+              '  Tapu location: ${tapus.centerCoordinates.latitude}, ${tapus.centerCoordinates.longitude}');
+          print('  Calculated distance: ${distance.toStringAsFixed(3)}km');
+          print('  Radius limit: ${radiusInKm}km');
+          print('  Within range: ${distance >= 0 && distance <= radiusInKm}');
 
-          // Calculate statistics from surrounding pins
-          final statistics = await _calculateTapuStatistics(tapus);
+          // Show tapus within 0-50KM range
+          if (distance >= 0 && distance <= radiusInKm) {
+            print(
+                'Adding tapu "${tapus.name}" to nearby list (${distance.toStringAsFixed(1)}km)');
+            print('  Tapus emojis: ${tapus.emojis}');
 
-          // Convert Tapus to Tapu with calculated statistics
-          final enhancedTapu = Tapu(
-            id: tapus.id,
-            latitude: tapus.centerCoordinates.latitude,
-            longitude: tapus.centerCoordinates.longitude,
-            imageUrl: tapus.centerPinImageUrl,
-            moodIconUrl: tapus.avatarUrl,
-            title: tapus.name,
-            location: 'Unknown Location',
-            description: '',
-            mood: '',
-            photoUrls: tapus.emojis, // Use the emojis from Tapus
-            totalPins: statistics.pinCount,
-            views: statistics.viewsCount,
-          );
+            // Calculate statistics from surrounding pins (simplified for performance)
+            final statistics = await _calculateTapuStatisticsOptimized(tapus);
 
-          print('  Enhanced Tapu photoUrls: ${enhancedTapu.photoUrls}');
-          _nearbyTapus.add(enhancedTapu);
-        } else {
-          print(
-              'Tapu "${tapus.name}" is outside the ${radiusInKm}km range (${distance.toStringAsFixed(1)}km)');
+            // Convert Tapus to Tapu with calculated statistics
+            final enhancedTapu = Tapu(
+              id: tapus.id,
+              latitude: tapus.centerCoordinates.latitude,
+              longitude: tapus.centerCoordinates.longitude,
+              imageUrl: tapus.centerPinImageUrl,
+              moodIconUrl: tapus.avatarUrl,
+              title: tapus.name,
+              location: 'Unknown Location',
+              description: '',
+              mood: '',
+              photoUrls: tapus.emojis, // Use the emojis from Tapus
+              totalPins: statistics.pinCount,
+              views: statistics.viewsCount,
+            );
+
+            print('  Enhanced Tapu photoUrls: ${enhancedTapu.photoUrls}');
+            _nearbyTapus.add(enhancedTapu);
+          } else {
+            print(
+                'Tapu "${tapus.name}" is outside the ${radiusInKm}km range (${distance.toStringAsFixed(1)}km)');
+          }
         }
+
+        print(
+            'Loaded ${_nearbyTapus.length} tapus within ${radiusInKm}KM range');
+
+        // Sort by distance
+        _nearbyTapus.sort((a, b) {
+          final distanceA = _distanceCache[
+                  '${_currentLatitude},${_currentLongitude},${a.latitude},${a.longitude}'] ??
+              0.0;
+          final distanceB = _distanceCache[
+                  '${_currentLatitude},${_currentLongitude},${b.latitude},${b.longitude}'] ??
+              0.0;
+          return distanceA.compareTo(distanceB);
+        });
+
+        _isLoading = false;
+        notifyListeners();
+      } catch (e) {
+        _error = 'Failed to load nearby tapus: $e';
+        _isLoading = false;
+        notifyListeners();
       }
+    });
+  }
 
-      print('Loaded ${_nearbyTapus.length} tapus within ${radiusInKm}KM range');
+  // Pre-calculate distances for all tapus to avoid repeated calculations
+  void _precalculateTapuDistances(List<Tapus> allTapus) {
+    PerformanceMonitor.startTimer('TapuProvider.precalculateTapuDistances');
 
-      // Sort by distance
-      _nearbyTapus.sort((a, b) {
-        final distanceA = getDistance(
-            _currentLatitude, _currentLongitude, a.latitude, a.longitude);
-        final distanceB = getDistance(
-            _currentLatitude, _currentLongitude, b.latitude, b.longitude);
-        return distanceA.compareTo(distanceB);
-      });
-
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _error = 'Failed to load nearby tapus: $e';
-      _isLoading = false;
-      notifyListeners();
+    for (final tapus in allTapus) {
+      final key =
+          '${_currentLatitude},${_currentLongitude},${tapus.centerCoordinates.latitude},${tapus.centerCoordinates.longitude}';
+      if (!_distanceCache.containsKey(key)) {
+        final distance = Geolocator.distanceBetween(
+              _currentLatitude,
+              _currentLongitude,
+              tapus.centerCoordinates.latitude,
+              tapus.centerCoordinates.longitude,
+            ) /
+            1000; // Convert to km
+        _distanceCache[key] = distance;
+      }
     }
+
+    PerformanceMonitor.endTimer('TapuProvider.precalculateTapuDistances');
   }
 
   // Calculate statistics from surrounding pins within 5KM
   Future<MapDetailCardData> _calculateTapuStatistics(Tapus tapu) async {
+    try {
+      // Get all pins from Firebase
+      final allPins = await _firebaseService.getNearbyPins(
+        userLatitude: _currentLatitude ?? 0.0,
+        userLongitude: _currentLongitude ?? 0.0,
+        radiusInKm: 30.0, // Get all pins within 30KM, then filter
+      );
+
+      // Filter pins within 5KM of the tapu
+      final nearbyPins = allPins.where((pin) {
+        final distance = getDistance(
+          tapu.centerCoordinates.latitude,
+          tapu.centerCoordinates.longitude,
+          pin.latitude,
+          pin.longitude,
+        );
+        return distance <= 5.0; // Within 5KM
+      }).toList();
+
+      // Calculate statistics
+      int totalPins = nearbyPins.length;
+      int totalImages = 0;
+      int totalAudios = 0;
+      int totalViews = 0;
+
+      for (final pin in nearbyPins) {
+        totalImages += pin.photoCount;
+        totalAudios += pin.audioCount;
+        totalViews += pin.viewsCount;
+      }
+
+      // Get distance from current location to tapu (same as PinProvider)
+      final distanceInKm = getDistance(
+        _currentLatitude,
+        _currentLongitude,
+        tapu.centerCoordinates.latitude,
+        tapu.centerCoordinates.longitude,
+      );
+
+      // Use the same logic as PinProvider for distance formatting
+      double distanceValue;
+      String distanceUnit;
+      if (distanceInKm < 1) {
+        distanceValue = (distanceInKm * 1000).round().toDouble();
+        distanceUnit = 'm';
+      } else {
+        distanceValue = distanceInKm;
+        distanceUnit = 'km';
+      }
+
+      return MapDetailCardData(
+        distance: distanceValue,
+        distanceUnit: distanceUnit,
+        title: tapu.name,
+        pinCount: totalPins,
+        imageCount: totalImages,
+        audioCount: totalAudios,
+        viewsCount: totalViews,
+        reactionEmojis: [],
+        playsCount: 0,
+      );
+    } catch (e) {
+      print('Error calculating tapu statistics: $e');
+      return MapDetailCardData(
+        playsCount: 0,
+        distance: 0.0,
+        distanceUnit: 'km',
+        title: tapu.name,
+        pinCount: 0,
+        imageCount: 0,
+        audioCount: 0,
+        viewsCount: 0,
+        reactionEmojis: [],
+      );
+    }
+  }
+
+  // Optimized version of _calculateTapuStatistics for performance
+  Future<MapDetailCardData> _calculateTapuStatisticsOptimized(
+      Tapus tapu) async {
     try {
       // Get all pins from Firebase
       final allPins = await _firebaseService.getNearbyPins(
@@ -625,22 +766,38 @@ class TapuProvider with ChangeNotifier {
 
   // Refresh all data
   Future<void> refresh() async {
-    await _getCurrentLocation();
-    await loadUserTapus();
+    _isInitialized = false;
+    _distanceCache.clear();
+    _distanceTextCache.clear();
+    await initialize();
   }
 
   // Get distance between two points (same as PinProvider)
   double getDistance(double lat1, double lon1, double lat2, double lon2) {
-    return Geolocator.distanceBetween(lat1, lon1, lat2, lon2) /
+    final key = '$lat1,$lon1,$lat2,$lon2';
+    if (_distanceCache.containsKey(key)) {
+      return _distanceCache[key]!;
+    }
+    final distance = Geolocator.distanceBetween(lat1, lon1, lat2, lon2) /
         1000; // Convert to km
+    _distanceCache[key] = distance;
+    return distance;
   }
 
   // Get formatted distance string (same as PinProvider)
   String getFormattedDistance(double distanceInKm) {
+    final key = distanceInKm.toString();
+    if (_distanceTextCache.containsKey(key)) {
+      return _distanceTextCache[key]!;
+    }
     if (distanceInKm < 1) {
-      return '${(distanceInKm * 1000).round()}m';
+      final formatted = '${(distanceInKm * 1000).round()}m';
+      _distanceTextCache[key] = formatted;
+      return formatted;
     } else {
-      return '${distanceInKm.toStringAsFixed(1)}km';
+      final formatted = '${distanceInKm.toStringAsFixed(1)}km';
+      _distanceTextCache[key] = formatted;
+      return formatted;
     }
   }
 
