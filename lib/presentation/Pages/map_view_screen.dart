@@ -207,7 +207,8 @@ class _MapViewScreenState extends State<MapViewScreen> {
           final tapus = tapuProvider.nearbyTapus;
           final isLoading = tapuProvider.isLoading;
           final isInitialized = tapuProvider.isInitialized;
-          final userProfileImageUrl = editProfileProvider.getProfileImageUrl();
+          final userProfileImageUrl =
+              editProfileProvider.getProfileImageUrlForScreens();
 
           // Debug logging
           print('MapViewScreen - Tapus count: ${tapus.length}');
@@ -382,8 +383,8 @@ class _MapViewScreenState extends State<MapViewScreen> {
                             },
                             child: CircleAvatar(
                               radius: 20,
-                              backgroundImage:
-                                  NetworkImage(provider.getProfileImageUrl()),
+                              backgroundImage: NetworkImage(
+                                  provider.getProfileImageUrlForScreens()),
                             ),
                           );
                         },
@@ -534,13 +535,22 @@ class _MapViewScreenState extends State<MapViewScreen> {
                                   final tapus = tapuProvider.nearbyTapus;
 
                                   if (tapus.isEmpty) {
-                                    return Center(
-                                      child: Padding(
-                                        padding: EdgeInsets.only(top: 50),
-                                        child: Text(
-                                          'No Tapus found nearby',
-                                          style: text14W400White(context),
-                                        ),
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 24,).copyWith(top: 30),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            'No Tapu\'s/Pins found nearby',
+                                            style: text18W600White(context),
+                                          ),
+                                          SizedBox(height: 20),
+                                          Image.asset(
+                                            "assets/images/notapus.png",
+                                            fit: BoxFit.cover,
+                                            height: 150,
+                                          ),
+                                        ],
                                       ),
                                     );
                                   }

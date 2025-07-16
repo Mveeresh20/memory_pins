@@ -194,7 +194,9 @@ class _MyTapusScreenState extends State<MyTapusScreen> {
                           style: text18W700White(context),
                         ),
                         GestureDetector(
-                          onTap: _navigateToCreateTapu,
+                          onTap: () {
+                            Navigator.pop(context);
+                          },
                           child: Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8),

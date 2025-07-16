@@ -129,7 +129,7 @@ class AuthService {
               email.split('@')[0], // Use part of email if name not provided
           'email': email,
           'imageProfile': '', // Empty string for default profile image
-          'mobileNumber': '',
+          'mobileNumber': 'xxxxxxxxxx', // Add fallback for mobile number
           'createdAt': ServerValue.timestamp,
           'lastLogin': ServerValue.timestamp,
           'authProvider': 'email',

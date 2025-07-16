@@ -529,8 +529,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               },
                               child: CircleAvatar(
                                 radius: 20,
-                                backgroundImage:
-                                    NetworkImage(provider.getProfileImageUrl()),
+                                backgroundImage: NetworkImage(
+                                    provider.getProfileImageUrlForScreens()),
                               ),
                             );
                           },

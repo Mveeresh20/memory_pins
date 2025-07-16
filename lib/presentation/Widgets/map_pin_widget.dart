@@ -203,6 +203,9 @@ class HomeMapWidgetState extends State<HomeMapWidget> {
   Future<void> _processPinBatch(List<Pin> pins, Set<Marker> markers) async {
     for (final pin in pins) {
       print('Processing pin: ${pin.id} - ${pin.title}');
+      print('Pin mood icon URL: ${pin.moodIconUrl}');
+      print(
+          'Pin distance: ${widget.getPinDistance?.call(pin) ?? pin.location}');
 
       // Get distance text for the pin
       final distanceText = widget.getPinDistance?.call(pin) ?? pin.location;
@@ -233,16 +236,20 @@ class HomeMapWidgetState extends State<HomeMapWidget> {
             if (customIcon != null && mounted) {
               _customMarkers[pin.id] = customIcon;
               _markerCreationInProgress[pin.id] = false;
+              print('Custom marker created successfully for pin ${pin.id}');
 
               // Update the marker with custom icon
               setState(() {
                 _markers = _markers.map((marker) {
                   if (marker.markerId.value == 'pin_${pin.id}') {
+                    print('Updating marker icon for pin ${pin.id}');
                     return marker.copyWith(iconParam: customIcon);
                   }
                   return marker;
                 }).toSet();
               });
+            } else {
+              print('Custom marker creation failed for pin ${pin.id}');
             }
           }).catchError((e) {
             print('Error creating custom marker for pin ${pin.id}: $e');
@@ -449,15 +456,27 @@ class HomeMapWidgetState extends State<HomeMapWidget> {
 
       // Try to load and draw the mood image
       try {
+        print(
+            'MapPinWidget - Loading mood icon for pin ${pin.id}: ${pin.moodIconUrl}');
+
         if (pin.moodIconUrl.isNotEmpty && pin.moodIconUrl.startsWith('http')) {
+          print('MapPinWidget - Mood icon URL is valid, making request...');
+
           final moodResponse =
               await http.get(Uri.parse(pin.moodIconUrl)).timeout(
-                    const Duration(seconds: 5),
-                    onTimeout: () =>
-                        throw Exception('Mood image request timed out'),
-                  );
+            const Duration(seconds: 10), // Increased timeout
+            onTimeout: () {
+              print(
+                  'MapPinWidget - Mood icon request timed out for pin ${pin.id}');
+              throw Exception('Mood image request timed out');
+            },
+          );
+
+          print(
+              'MapPinWidget - Mood icon response status: ${moodResponse.statusCode} for pin ${pin.id}');
 
           if (moodResponse.statusCode == 200) {
+            print('MapPinWidget - Loading mood icon image for pin ${pin.id}');
             final moodCodec =
                 await ui.instantiateImageCodec(moodResponse.bodyBytes);
             final moodFrameInfo = await moodCodec.getNextFrame();
@@ -476,9 +495,21 @@ class HomeMapWidgetState extends State<HomeMapWidget> {
               moodImagePaint,
             );
             canvas.restore();
+            print(
+                'MapPinWidget - Mood icon drawn successfully for pin ${pin.id}');
+          } else {
+            print(
+                'MapPinWidget - Mood icon request failed with status ${moodResponse.statusCode} for pin ${pin.id}');
+            throw Exception(
+                'Mood image request failed: ${moodResponse.statusCode}');
           }
+        } else {
+          print(
+              'MapPinWidget - Mood icon URL is empty or invalid for pin ${pin.id}: ${pin.moodIconUrl}');
+          throw Exception('Invalid mood icon URL: ${pin.moodIconUrl}');
         }
       } catch (e) {
+        print('MapPinWidget - Error loading mood icon for pin ${pin.id}: $e');
         // Draw a placeholder mood icon
         final placeholderMoodPaint = Paint()
           ..color = Colors.orange
@@ -612,6 +643,10 @@ class HomeMapWidgetState extends State<HomeMapWidget> {
 
   void refreshPins() {
     print('Refreshing pins...');
+    // Clear marker cache to ensure fresh markers are created
+    // _customMarkers.clear();
+    // _markerCreationInProgress.clear();
+    print('Marker cache cleared, updating markers...');
     _updateMarkers();
   }
 

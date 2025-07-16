@@ -337,39 +337,42 @@ class FirebaseService {
   /// Get user's tapus
   Future<List<Tapus>> getUserTapus({String? userId}) async {
     try {
-      // For testing purposes, just get all tapus instead of filtering by userId
-      // This avoids the index requirement
-      return await getAllTapus();
+      final targetUserId = userId ?? currentUserId;
+      if (targetUserId == null) throw Exception('User not authenticated');
 
-      // Original code (commented out for testing):
-      // final targetUserId = userId ?? currentUserId;
-      // if (targetUserId == null) throw Exception('User not authenticated');
-      // final snapshot = await _tapusRef.orderByChild('userId').equalTo(targetUserId).get();
-      // if (!snapshot.exists) return [];
-      // final List<Tapus> userTapus = [];
-      // for (final child in snapshot.children) {
-      //   final tapuData = child.value as Map<dynamic, dynamic>;
-      //   final tapu = Tapus(
-      //     id: tapuData['tapuId'] ?? '',
-      //     name: tapuData['title'] ?? '',
-      //     avatarUrl: (tapuData['photoUrls'] as List<dynamic>?)?.isNotEmpty == true
-      //         ? tapuData['photoUrls'][0]
-      //         : '',
-      //     centerPinImageUrl: (tapuData['photoUrls'] as List<dynamic>?)?.isNotEmpty == true
-      //         ? tapuData['photoUrls'][0]
-      //         : '',
-      //     centerCoordinates: MapCoordinates(
-      //       latitude: tapuData['latitude'] ?? 0.0,
-      //       longitude: tapuData['longitude'] ?? 0.0,
-      //     ),
-      //     totalPins: tapuData['totalPins'] ?? 0,
-      //     location: tapuData['location'] ?? '', // Add location field
-      //   );
-      //   userTapus.add(tapu);
-      // }
-      // return userTapus;
+      // Get all tapus and filter by userId
+      final allTapus = await getAllTapus();
+      final userTapus = <Tapus>[];
+
+      for (final tapu in allTapus) {
+        // Check if this tapu belongs to the current user
+        final isOwnedByUser = await _isTapuOwnedByUser(tapu.id, targetUserId);
+        if (isOwnedByUser) {
+          userTapus.add(tapu);
+        }
+      }
+
+      print('Found ${userTapus.length} tapus for user: $targetUserId');
+      return userTapus;
     } catch (e) {
-      throw Exception('Failed to get user tapus: $e');
+      print('Error getting user tapus: $e');
+      return [];
+    }
+  }
+
+  /// Helper method to check if a tapu is owned by a specific user
+  Future<bool> _isTapuOwnedByUser(String tapuId, String userId) async {
+    try {
+      final snapshot = await _tapusRef.child(tapuId).get();
+      if (!snapshot.exists) return false;
+
+      final tapuData = snapshot.value as Map<dynamic, dynamic>;
+      final tapuUserId = tapuData['userId'] as String?;
+
+      return tapuUserId == userId;
+    } catch (e) {
+      print('Error checking tapu ownership: $e');
+      return false;
     }
   }
 

@@ -22,8 +22,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-
-   void initState() {
+  void initState() {
     super.initState();
     Future.microtask(
       () => Provider.of<EditProfileProvider>(
@@ -33,7 +32,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
- File? _imageFile;
+  File? _imageFile;
 
   Future<void> _pickImage() async {
     final pickedImage = await ImagePicker().pickImage(
@@ -48,292 +47,288 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-
-   int selectedTileIndex = -1;
+  int selectedTileIndex = -1;
   @override
   Widget build(BuildContext context) {
     return Consumer<EditProfileProvider>(
       builder: (context, profileProvider, child) {
         final userName = profileProvider.profileDetails?.userName ?? "User";
         final email = profileProvider.profileDetails?.email ?? "Email";
-         final userImage = profileProvider.profilePicture ?? Images.noprofileImg;
-         final mobileNumber = profileProvider.profileDetails?.mobileNumber ?? "+91 xxxxxxx";
+        final userImage = profileProvider.profilePicture ?? Images.noprofileImg;
+        final mobileNumber =
+            profileProvider.profileDetails?.mobileNumber ?? "xxxxxxxxxx";
 
         // final userImage = profileProvider.getProfileImageUrl();
 
-    return Scaffold(
-      backgroundColor: Color(0xFF131F2B),
-      body: SingleChildScrollView(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-            ).copyWith(top: 16),
-            child: Column(
-              spacing: 22,
-              children: [
-                Stack(
-                  alignment: Alignment.center,
+        return Scaffold(
+          backgroundColor: Color(0xFF131F2B),
+          body: SingleChildScrollView(
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                ).copyWith(top: 16),
+                child: Column(
+                  spacing: 22,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
+                    Stack(
+                      alignment: Alignment.center,
                       children: [
-                        GestureDetector(
-                          onTap: () {
-                            NavigationService.pop();
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.frameBgColor,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(15),
-                              child: Icon(
-                                Icons.arrow_back_ios_new_rounded,
-                                color: Colors.white,
-                                size: 20,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                NavigationService.pop();
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.frameBgColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(15),
+                                  child: Icon(
+                                    Icons.arrow_back_ios_new_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
                               ),
                             ),
+                          ],
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Color(0xFF0F172A).withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(36),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Color(0xFF0F172A).withOpacity(0.24),
+                                blurRadius: 16,
+                                offset: Offset(2, 12),
+                              )
+                            ],
+                            border: Border.all(
+                                width: 1,
+                                color: Color(0xFF0F172A).withOpacity(0.06)),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 70),
+                          child: Text(
+                            "Profile",
+                            textAlign: TextAlign.center,
+                            style: text18W700White(context),
                           ),
                         ),
                       ],
                     ),
                     Container(
                       decoration: BoxDecoration(
-                        color: Color(0xFF0F172A).withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(36),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Color(0xFF0F172A).withOpacity(0.24),
-                            blurRadius: 16,
-                            offset: Offset(2, 12),
-                          )
-                        ],
-                        border: Border.all(
-                            width: 1,
-                            color: Color(0xFF0F172A).withOpacity(0.06)),
+                        borderRadius: BorderRadius.circular(12),
+                        color: AppColors.frameBgColor,
                       ),
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 10, horizontal: 70),
-                      child: Text(
-                        "Profile",
-                        textAlign: TextAlign.center,
-                        style: text18W700White(context),
-                      ),
-                    ),
-                  ],
-                ),
-               
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: AppColors.frameBgColor,
-                  ),
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-
-                        ClipOval(
-                          child: Consumer<EditProfileProvider>(
-                            builder: (context, provider, child) {
-                              final imageUrl = provider.getProfileImageUrl();
-                              return CachedNetworkImage(
-                                imageUrl: imageUrl,
-                                height: 80,
-                                width: 80,
-                                fit: BoxFit.cover,
-                                placeholder: (context, url) => Container(
-                                  color: Colors.grey[300],
-                                  child: const Icon(
-                                    Icons.person,
-                                    size: 60,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                                errorWidget: (context, url, error) => Container(
-                                  color: Colors.grey[300],
-                                  child: const Icon(
-                                    Icons.person,
-                                    size: 60,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        // ClipOval(
-                        //     child: Image.network(
-                        //   Images.profilePageImg,
-                        //   fit: BoxFit.cover,
-                        //   height: 80,
-                        // )),
-                        SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
                           children: [
-                            Text(
-                              userName,
-                              style: text16W700White(context),
+                            ClipOval(
+                              child: Consumer<EditProfileProvider>(
+                                builder: (context, provider, child) {
+                                  final imageUrl =
+                                      provider.getProfileImageUrl();
+                                  return CachedNetworkImage(
+                                    imageUrl: imageUrl,
+                                    height: 80,
+                                    width: 80,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) => Container(
+                                      color: Colors.grey[300],
+                                      child: const Icon(
+                                        Icons.person,
+                                        size: 60,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) =>
+                                        Container(
+                                      color: Colors.grey[300],
+                                      child: const Icon(
+                                        Icons.person,
+                                        size: 60,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
-                            Text(
-                              email,
-                              // profileProvider.profileDetails?.email ?? "",
-                              style: text12W400White(context),
-                            ),
-                            Text(
-                             mobileNumber,
-                              style: text12W400White(context),
+                            // ClipOval(
+                            //     child: Image.network(
+                            //   Images.profilePageImg,
+                            //   fit: BoxFit.cover,
+                            //   height: 80,
+                            // )),
+                            SizedBox(width: 8),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  userName,
+                                  style: text16W700White(context),
+                                ),
+                                Text(
+                                  email,
+                                  // profileProvider.profileDetails?.email ?? "",
+                                  style: text12W400White(context),
+                                ),
+                                Text(
+                                  mobileNumber,
+                                  style: text12W400White(context),
+                                )
+                              ],
                             )
                           ],
-                        )
-                      ],
-                    ),
-                  ),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.frameBgColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        width: 1,
-                        color:Colors.white.withOpacity(0.2)),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: 8,
-                      children: [
-                        Text(
-                          "Profile",
-                          style: text16W600White(context),
                         ),
-                        ProfileOptionTile(
-                          
-                          isSelected: selectedTileIndex == 0,
-                            image: Images.editImg,
-                            title: "Edit Profile",
-                            onTap: () {
-                              setState(() {
-                                NavigationService.pushNamed('/edit-profile');
-                                selectedTileIndex = 0;
-                              });
-                            }),
-                        ProfileOptionTile(
-                          isSelected: selectedTileIndex == 1,
-                            image: Images.editImg,
-                            title: "Saved Pins",
-                            onTap: () {
-                              NavigationService.pushNamed('/saved-pins');
-                              setState(() {
-                                selectedTileIndex = 1;
-                              });
-                            }),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.frameBgColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        width: 1,
-                        color:Colors.white.withOpacity(0.2)),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: 8,
-                      children: [
-                        Text(
-                          "Your Subscription",
-                          style: text16W600White(context),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.frameBgColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            width: 1, color: Colors.white.withOpacity(0.2)),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 8,
+                          children: [
+                            Text(
+                              "Profile",
+                              style: text16W600White(context),
+                            ),
+                            ProfileOptionTile(
+                                isSelected: selectedTileIndex == 0,
+                                image: Images.editImg,
+                                title: "Edit Profile",
+                                onTap: () {
+                                  setState(() {
+                                    NavigationService.pushNamed(
+                                        '/edit-profile');
+                                    selectedTileIndex = 0;
+                                  });
+                                }),
+                            ProfileOptionTile(
+                                isSelected: selectedTileIndex == 1,
+                                image: Images.editImg,
+                                title: "Saved Pins",
+                                onTap: () {
+                                  NavigationService.pushNamed('/saved-pins');
+                                  setState(() {
+                                    selectedTileIndex = 1;
+                                  });
+                                }),
+                          ],
                         ),
-                        ProfileOptionTile(
-                          isSelected: selectedTileIndex == 2,
-                            image: Images.subscriptionImg,
-                            title: "Upgrade to premium",
-                            onTap: () {
-                              setState(() {
-                                selectedTileIndex = 2;
-                                NavigationService.pushNamed('/premium-purchase');
-                              });
-                            }),
-                        ProfileOptionTile(
-                          isSelected: selectedTileIndex == 3,
-                            image: Images.restoreImg,
-                            title: "Restore Purchase",
-                            onTap: () {
-                              setState(() {
-                                selectedTileIndex = 3;
-                              });
-                            }),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.frameBgColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        width: 1,
-                        color:Colors.white.withOpacity(0.2)),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: 8,
-                      children: [
-                        Text(
-                          "Account",
-                          style: text16W600White(context),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.frameBgColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            width: 1, color: Colors.white.withOpacity(0.2)),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 8,
+                          children: [
+                            Text(
+                              "Your Subscription",
+                              style: text16W600White(context),
+                            ),
+                            ProfileOptionTile(
+                                isSelected: selectedTileIndex == 2,
+                                image: Images.subscriptionImg,
+                                title: "Upgrade to premium",
+                                onTap: () {
+                                  setState(() {
+                                    selectedTileIndex = 2;
+                                    NavigationService.pushNamed(
+                                        '/premium-purchase');
+                                  });
+                                }),
+                            ProfileOptionTile(
+                                isSelected: selectedTileIndex == 3,
+                                image: Images.restoreImg,
+                                title: "Restore Purchase",
+                                onTap: () {
+                                  setState(() {
+                                    selectedTileIndex = 3;
+                                  });
+                                }),
+                          ],
                         ),
-                        ProfileOptionTile(
-                          isSelected: selectedTileIndex == 4,
-                          showArrow: false,
-                            image: Images.logoutImg,
-                            title: "Logout",
-                            onTap: () {
-                              setState(() {
-                                selectedTileIndex = 4;
-                                showLogoutDialog(context);
-
-                              });
-                            }),
-                        ProfileOptionTile(
-                          isSelected: selectedTileIndex == 5,
-                          showArrow: false,
-                            image: Images.deleteImg,
-                            title: "Delete Account",
-                            onTap: () {
-                              setState(() {
-                                selectedTileIndex = 5;
-                                showDeleteAccountDialog(context);
-                              });
-                            }),
-                      ],
+                      ),
                     ),
-                  ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.frameBgColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            width: 1, color: Colors.white.withOpacity(0.2)),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 8,
+                          children: [
+                            Text(
+                              "Account",
+                              style: text16W600White(context),
+                            ),
+                            ProfileOptionTile(
+                                isSelected: selectedTileIndex == 4,
+                                showArrow: false,
+                                image: Images.logoutImg,
+                                title: "Logout",
+                                onTap: () {
+                                  setState(() {
+                                    selectedTileIndex = 4;
+                                    showLogoutDialog(context);
+                                  });
+                                }),
+                            ProfileOptionTile(
+                                isSelected: selectedTileIndex == 5,
+                                showArrow: false,
+                                image: Images.deleteImg,
+                                title: "Delete Account",
+                                onTap: () {
+                                  setState(() {
+                                    selectedTileIndex = 5;
+                                    showDeleteAccountDialog(context);
+                                  });
+                                }),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 30,
+                    )
+                  ],
                 ),
-                SizedBox(height: 30,)
-              ],
+              ),
             ),
           ),
-        ),
-      ),
-    );
+        );
       },
     );
   }
@@ -478,7 +473,6 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
   }
-
 
   void showDeleteAccountDialog(BuildContext context) {
     final TextEditingController passwordController = TextEditingController();

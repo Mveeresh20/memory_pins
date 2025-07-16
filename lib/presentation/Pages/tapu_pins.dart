@@ -21,6 +21,7 @@ class TapuPins extends StatefulWidget {
 
 class _TapuPinsState extends State<TapuPins> {
   List<TapuPinsItem> _allPins = [];
+  List<Pin> _originalPins = []; // Store original Pin objects
   bool _isLoading = true;
   String? _error;
 
@@ -43,7 +44,8 @@ class _TapuPinsState extends State<TapuPins> {
       final pins = await tapuProvider.loadPinsAroundTapu(widget.tapus);
       print('Loaded ${pins.length} pins for Tapus: ${widget.tapus.name}');
 
-      // Convert Pin data to TapuPinsItem
+      // Store original Pin objects and convert to TapuPinsItem
+      _originalPins = pins;
       final tapuPinsItems =
           pins.map((pin) => _convertPinToTapuPinsItem(pin)).toList();
 
@@ -205,8 +207,12 @@ class _TapuPinsState extends State<TapuPins> {
                     },
                     itemCount: _allPins.length,
                     itemBuilder: (context, index) {
-                      final pin = _allPins[index];
-                      return TapuPinsCard(tapuPins: pin);
+                      final tapuPin = _allPins[index];
+                      final originalPin = _originalPins[index];
+                      return TapuPinsCard(
+                        tapuPins: tapuPin,
+                        originalPin: originalPin,
+                      );
                     },
                   ),
               ],

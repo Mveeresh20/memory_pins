@@ -139,6 +139,9 @@ class _SavedPinsState extends State<SavedPins> {
                               style: text12W400White(context),
                               textAlign: TextAlign.center,
                             ),
+
+                            SizedBox(height: 20),
+                            Image.asset("assets/images/nosavedpins.png",fit: BoxFit.cover,height: 150,),
                           ],
                         ),
                       )

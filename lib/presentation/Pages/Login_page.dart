@@ -25,12 +25,14 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool isPasswordVisible = false;
-  bool _isLoading = false;
+  bool _isEmailLoading = false;
+  bool _isAppleLoading = false;
+  bool _isGuestLoading = false;
 
   void _handleSignIn() async {
     if (_formKey.currentState?.validate() ?? false) {
       setState(() {
-        _isLoading = true;
+        _isEmailLoading = true;
       });
 
       try {
@@ -42,7 +44,7 @@ class _LoginPageState extends State<LoginPage> {
 
         if (!mounted) return;
         setState(() {
-          _isLoading = false;
+          _isEmailLoading = false;
         });
 
         if (success) {
@@ -65,7 +67,7 @@ class _LoginPageState extends State<LoginPage> {
       } catch (e) {
         if (!mounted) return;
         setState(() {
-          _isLoading = false;
+          _isEmailLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -79,7 +81,7 @@ class _LoginPageState extends State<LoginPage> {
 
   void _handleAppleSignIn() async {
     setState(() {
-      _isLoading = true;
+      _isAppleLoading = true;
     });
 
     try {
@@ -88,7 +90,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
       setState(() {
-        _isLoading = false;
+        _isAppleLoading = false;
       });
 
       if (success) {
@@ -105,7 +107,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _isLoading = false;
+        _isAppleLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -118,7 +120,7 @@ class _LoginPageState extends State<LoginPage> {
 
   void _handleAnonymousSignIn() async {
     setState(() {
-      _isLoading = true;
+      _isGuestLoading = true;
     });
 
     try {
@@ -127,7 +129,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
       setState(() {
-        _isLoading = false;
+        _isGuestLoading = false;
       });
 
       if (success) {
@@ -144,7 +146,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _isLoading = false;
+        _isGuestLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -304,7 +306,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
               SizedBox(height: 28),
 
-              _isLoading
+              _isEmailLoading
                   ? Center(
                       child: CircularProgressIndicator(color: Colors.white),
                     )
@@ -324,7 +326,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
               SizedBox(height: 24),
 
-              _isLoading
+              _isAppleLoading
                   ? Center(
                       child: CircularProgressIndicator(color: Colors.white),
                     )
@@ -345,7 +347,7 @@ class _LoginPageState extends State<LoginPage> {
 
               SizedBox(height: 12),
 
-              _isLoading
+              _isGuestLoading
                   ? Center(
                       child: CircularProgressIndicator(color: Colors.white),
                     )

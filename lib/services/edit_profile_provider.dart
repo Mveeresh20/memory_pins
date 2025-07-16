@@ -133,6 +133,24 @@ class EditProfileProvider extends ChangeNotifier {
     }
   }
 
+  // Get the full image URL for display with different default for specific screens
+  String getProfileImageUrlForScreens() {
+    if (_profilePicture == null || _profilePicture!.isEmpty) {
+      return Images.profileImg; // Different default for home, map, tapu screens
+    }
+    try {
+      // If the profile picture is already a full URL, return it
+      if (_profilePicture!.startsWith('http')) {
+        return _profilePicture!;
+      }
+      // Otherwise, construct the URL using the correct base URL
+      return "${AppConstant.baseUrlToUploadAndFetchUsersImage}/${_profilePicture!}";
+    } catch (e) {
+      print("Error getting image URL: $e");
+      return Images.profileImg; // Different default for home, map, tapu screens
+    }
+  }
+
   Future<void> updateUserProfile(String imagePath, BuildContext context) async {
     setLoading(true);
     try {
@@ -200,7 +218,7 @@ class EditProfileProvider extends ChangeNotifier {
 
       profilePicture = profileDetails.imageProfile ?? '';
       emailTextController.text = profileDetails.email ?? '';
-      mobileNumberController.text = profileDetails.mobileNumber ?? '';
+      mobileNumberController.text = profileDetails.mobileNumber ?? 'xxxxxxxxxx';
 
       // Extract profile details
       firstNameController.text = '${profileDetails.userName}';
@@ -257,7 +275,10 @@ class EditProfileProvider extends ChangeNotifier {
       var profileDetails = ProfileDetails(
         userName: firstNameController.text,
         email: emailTextController.text,
-        mobileNumber: mobileNumberController.text,
+        mobileNumber: mobileNumberController.text.isNotEmpty &&
+                mobileNumberController.text != 'xxxxxxxxxx'
+            ? mobileNumberController.text
+            : 'xxxxxxxxxx',
         imageProfile: existingImageProfile ?? profilePicture,
       );
 
@@ -316,10 +337,33 @@ class EditProfileProvider extends ChangeNotifier {
       final snapshot = event.snapshot;
 
       if (!snapshot.exists) {
-        log('No profile data found');
-        setLoading(false);
-        setError(true);
-        return null;
+        log('No profile data found - creating default profile for guest user');
+
+        // Create default profile for guest users
+        final defaultProfile = ProfileDetails(
+          userName: 'Guest User',
+          email: 'email',
+          mobileNumber: 'Mobile Number',
+          imageProfile: '',
+        );
+
+        // Save the default profile to database
+        await ref.set(defaultProfile.toMap());
+
+        // Set the profile details
+        profileDetails = defaultProfile;
+
+        // Update controllers
+        firstNameController.text = defaultProfile.userName ?? '';
+        emailTextController.text = defaultProfile.email ?? '';
+        profilePicture = defaultProfile.imageProfile;
+        mobileNumberController.text =
+            defaultProfile.mobileNumber ?? 'xxxxxxxxxx';
+
+        // Reset build phase and notify listeners
+        setBuildPhase(false);
+        notifyListeners();
+        return defaultProfile;
       }
 
       final data = snapshot.value;
@@ -336,7 +380,8 @@ class EditProfileProvider extends ChangeNotifier {
       firstNameController.text = profileDetails?.userName ?? '';
       emailTextController.text = profileDetails?.email ?? '';
       profilePicture = profileDetails?.imageProfile;
-      mobileNumberController.text = profileDetails?.mobileNumber ?? '';
+      mobileNumberController.text =
+          profileDetails?.mobileNumber ?? 'xxxxxxxxxx';
 
       // Reset build phase and notify listeners
       setBuildPhase(false);
@@ -437,8 +482,9 @@ class EditProfileProvider extends ChangeNotifier {
       await ref.update({
         'userName': name,
         'email': email,
-        'mobileNumber':
-            phone.isNotEmpty ? phone : null, // Save mobile number with fallback
+        'mobileNumber': phone.isNotEmpty && phone != 'xxxxxxxxxx'
+            ? phone
+            : 'xxxxxxxxxx', // Save mobile number with fallback
       });
 
       // Update provider state
@@ -449,7 +495,8 @@ class EditProfileProvider extends ChangeNotifier {
       if (_profileDetails != null) {
         _profileDetails!.userName = name;
         _profileDetails!.email = email;
-        _profileDetails!.mobileNumber = phone.isNotEmpty ? phone : null;
+        _profileDetails!.mobileNumber =
+            phone.isNotEmpty && phone != 'xxxxxxxxxx' ? phone : 'xxxxxxxxxx';
       }
 
       notifyListeners();

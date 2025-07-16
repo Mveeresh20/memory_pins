@@ -233,19 +233,19 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
                     ),
                   ),
                   Consumer<EditProfileProvider>(
-                        builder: (context, provider, child) {
-                          return GestureDetector(
-                            onTap: () {
-                              NavigationService.pushNamed('/profile');
-                            },
-                            child: CircleAvatar(
-                              radius: 20,
-                              backgroundImage: NetworkImage(provider.getProfileImageUrl()),
-                                 
-                            ),
-                          );
+                    builder: (context, provider, child) {
+                      return GestureDetector(
+                        onTap: () {
+                          NavigationService.pushNamed('/profile');
                         },
-                      ),
+                        child: CircleAvatar(
+                          radius: 20,
+                          backgroundImage: NetworkImage(
+                              provider.getProfileImageUrlForScreens()),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -281,8 +281,7 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
                       ),
                       const SizedBox(height: 16),
 
-
-                       Padding(
+                      Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -412,6 +411,7 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
                                                   _navigateToPinDetail(pin),
                                               child: TapuPinsCard(
                                                 tapuPins: tapuPinsItem,
+                                                originalPin: pin,
                                               ),
                                             ),
                                           );

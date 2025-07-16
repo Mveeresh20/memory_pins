@@ -87,6 +87,8 @@ class Images {
 
   
 
+  
+
 static const star= "assets/images/star.png";
 static const cunning= "assets/images/cunning.png";
 static const happy= "assets/images/happy.png";

@@ -110,6 +110,12 @@ TextStyle  text14W400White(BuildContext context) => GoogleFonts.manrope(
       fontWeight: FontWeight.w700,
     );
 
+    TextStyle  text18W600White(BuildContext context) => GoogleFonts.plusJakartaSans(
+      color: Colors.white,
+      fontSize: MediaQuery.of(context).size.width * 0.04,
+      fontWeight: FontWeight.w600,
+    );
+
     TextStyle  text12W400White(BuildContext context) => GoogleFonts.nunitoSans(
       color:Colors.white,
       fontSize: MediaQuery.of(context).size.width * 0.030,

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:memory_pins_app/models/tapu_pins_item.dart';
+import 'package:memory_pins_app/models/pin.dart';
+import 'package:memory_pins_app/models/pin_detail.dart';
+import 'package:memory_pins_app/presentation/Pages/pin_detail_screen.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
@@ -8,9 +11,13 @@ import 'package:memory_pins_app/utills/Constants/label_text_style.dart';
 import 'package:memory_pins_app/utills/Constants/ui.dart';
 
 class TapuPinsCard extends StatelessWidget {
-
   final TapuPinsItem tapuPins;
-  const TapuPinsCard({super.key, required this.tapuPins});
+  final Pin? originalPin; // Add original pin for navigation
+  const TapuPinsCard({
+    super.key,
+    required this.tapuPins,
+    this.originalPin, // Make it optional for backward compatibility
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -39,40 +46,53 @@ class TapuPinsCard extends StatelessWidget {
               children: [
                 Flexible(
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          tapuPins.location,
-                          style: text14W400White(context),
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            tapuPins.location,
+                            style: text14W400White(context),
+                          ),
                         ),
-                      ),
-                      SizedBox(
-                        width: 4,
-                      ),
-                      Image.asset(
-                        Images.trackImage,
-                        height: 20,
-                      )
-                    ]
-                  ),
+                        SizedBox(
+                          width: 4,
+                        ),
+                        Image.asset(
+                          Images.trackImage,
+                          height: 20,
+                        )
+                      ]),
                 ),
 
                 GestureDetector(
                   onTap: () {
-                    NavigationService.pushNamed('/pin-detail');
+                    if (originalPin != null) {
+                      // Convert original Pin to PinDetail and navigate
+                      final pinDetail = _convertPinToPinDetail(originalPin!);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PinDetailScreen(
+                            pinDetail: pinDetail,
+                            originalPin: originalPin,
+                          ),
+                        ),
+                      );
+                    } else {
+                      // Fallback to named route if no original pin
+                      NavigationService.pushNamed('/pin-detail');
+                    }
                   },
                   child: Container(
                     decoration: BoxDecoration(
                       border: Border.all(color: AppColors.borderColor1),
                       color: AppColors.bgGroundYellow,
                       boxShadow: [
-                       AppColors.backShadow,
+                        AppColors.backShadow,
                       ],
                       shape: BoxShape.circle,
-                      
                     ),
                     child: ClipOval(
                         child: Padding(
@@ -235,7 +255,7 @@ class TapuPinsCard extends StatelessWidget {
     );
   }
 
-   Widget _buildPreviewImage(String imageUrl, BuildContext context) {
+  Widget _buildPreviewImage(String imageUrl, BuildContext context) {
     double imageSizeWidth = MediaQuery.of(context).size.width * 0.18;
     double imageSizeHeight = MediaQuery.of(context).size.width * 0.18;
 
@@ -261,4 +281,35 @@ class TapuPinsCard extends StatelessWidget {
     );
   }
 
+  // Convert Pin to PinDetail for navigation (same as PinCard)
+  PinDetail _convertPinToPinDetail(Pin pin) {
+    print('Converting pin: ${pin.title}');
+    print('Pin has description: ${pin.description}');
+    print('Pin has ${pin.audioUrls.length} audio URLs');
+
+    // Convert image URLs to PhotoItem list
+    List<PhotoItem> photos =
+        pin.imageUrls.map((url) => PhotoItem(imageUrl: url)).toList();
+
+    // Convert audio URLs to AudioItem list
+    List<AudioItem> audios = [];
+    for (int i = 0; i < pin.audioUrls.length; i++) {
+      audios.add(AudioItem(
+        audioUrl: pin.audioUrls[i],
+        duration: '${(i + 1) * 2}:${(i + 1) * 10}',
+      ));
+    }
+
+    // Use the actual description from the pin, with fallback
+    String description = (pin.description?.isNotEmpty == true)
+        ? pin.description!
+        : 'A beautiful memory captured at ${pin.location}. This pin contains ${pin.photoCount} photos and ${pin.audioCount} audio recordings.';
+
+    return PinDetail(
+      title: pin.title,
+      description: description,
+      audios: audios,
+      photos: photos,
+    );
+  }
 }
