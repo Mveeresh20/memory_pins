@@ -266,6 +266,38 @@ class PinProvider with ChangeNotifier {
     }
   }
 
+  // Delete a pin
+  Future<bool> deletePin(String pinId) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final success = await _firebaseService.deletePin(pinId);
+
+      if (success) {
+        // Remove the pin from local lists
+        _userPins.removeWhere((pin) => pin.id == pinId);
+        _savedPins.removeWhere((pin) => pin.id == pinId);
+        _nearbyPins.removeWhere((pin) => pin.id == pinId);
+        _filteredPins.removeWhere((pin) => pin.id == pinId);
+
+        // Clear distance cache for this pin
+        _distanceCache.remove(pinId);
+        _distanceTextCache.remove(pinId);
+      }
+
+      _isLoading = false;
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _error = 'Failed to delete pin: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   // Increment pin views
   Future<void> incrementPinViews(String pinId) async {
     try {

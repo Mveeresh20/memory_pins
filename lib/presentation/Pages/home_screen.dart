@@ -7,6 +7,7 @@ import 'package:memory_pins_app/presentation/Pages/create_pin_screen.dart';
 import 'package:memory_pins_app/presentation/Pages/map_view_screen.dart';
 import 'package:memory_pins_app/presentation/Pages/my_pins_screen.dart';
 import 'package:memory_pins_app/presentation/Pages/pin_detail_screen.dart';
+import 'package:memory_pins_app/presentation/Widgets/pin_detail_popup.dart';
 // Correct Google Maps widget with custom UI
 import 'package:memory_pins_app/presentation/Widgets/map_pin_widget.dart';
 import 'package:memory_pins_app/services/edit_profile_provider.dart';
@@ -180,24 +181,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Navigate to pin detail screen
+  // Show pin detail popup
   void _navigateToPinDetail(Pin pin) {
-    print('Navigating to pin detail for: ${pin.title}');
+    print('Showing pin detail popup for: ${pin.title}');
     print('Pin description: ${pin.description}');
 
     final pinDetail = _convertPinToPinDetail(pin);
     print('Converted pin detail title: ${pinDetail.title}');
     print('Converted pin detail description: ${pinDetail.description}');
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PinDetailScreen(
-          pinDetail: pinDetail,
-          originalPin: pin, // Pass the original pin object
-        ),
-      ),
-    );
+    showPinDetailPopup(context, pinDetail, originalPin: pin);
   }
 
   void showExitDialog(BuildContext context) {
@@ -1102,7 +1095,6 @@ class _PinDetailsContent extends StatelessWidget {
 
   Widget _buildPreviewImage(String url, double size) {
     return Container(
-      margin: const EdgeInsets.only(right: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
         border: Border.all(width: 1, color: Colors.white.withOpacity(0.5)),

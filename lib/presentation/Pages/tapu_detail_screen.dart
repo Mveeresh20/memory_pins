@@ -9,6 +9,7 @@ import 'package:memory_pins_app/models/pin.dart';
 import 'package:memory_pins_app/presentation/Widgets/tapu_detail_map_widget.dart';
 import 'package:memory_pins_app/presentation/Widgets/tapu_pins_card.dart';
 import 'package:memory_pins_app/presentation/Pages/pin_detail_screen.dart';
+import 'package:memory_pins_app/presentation/Widgets/pin_detail_popup.dart';
 import 'package:memory_pins_app/models/pin_detail.dart';
 import 'package:memory_pins_app/services/edit_profile_provider.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
@@ -112,20 +113,12 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
     );
   }
 
-  // Navigate to pin detail screen
+  // Show pin detail popup
   void _navigateToPinDetail(Pin pin) {
-    print('Navigating to pin detail for: ${pin.title}');
+    print('Showing pin detail popup for: ${pin.title}');
     final pinDetail = _convertPinToPinDetail(pin);
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PinDetailScreen(
-          pinDetail: pinDetail,
-          originalPin: pin,
-        ),
-      ),
-    );
+    showPinDetailPopup(context, pinDetail, originalPin: pin);
   }
 
   // Get distance from tapu center to pin
@@ -134,7 +127,7 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
     return tapuProvider.getPinDistanceFromTapu(widget.tapu, pin);
   }
 
-  // Load current user's username
+  // Load current user's usernameP
   Future<void> _loadCreatorUsername() async {
     try {
       final authService = AuthService();

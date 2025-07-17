@@ -353,6 +353,23 @@ class _MapViewScreenState extends State<MapViewScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+
+                      GestureDetector(
+                    onTap: () {
+                      NavigationService.pushNamed('/home');
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Color(0xFF253743),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.arrow_back_ios_new,
+                          color: Colors.white, size: 20),
+                    ),
+                  ),
+
+                  SizedBox(width: 12),
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.symmetric(

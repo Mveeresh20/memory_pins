@@ -4,6 +4,7 @@ import 'package:memory_pins_app/models/saved_pin_item.dart';
 import 'package:memory_pins_app/models/pin.dart';
 import 'package:memory_pins_app/models/pin_detail.dart';
 import 'package:memory_pins_app/presentation/Pages/pin_detail_screen.dart';
+import 'package:memory_pins_app/presentation/Widgets/pin_detail_popup.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/label_text_style.dart';
@@ -50,15 +51,7 @@ class SavedPinCard extends StatelessWidget {
   void _navigateToPinDetail(BuildContext context) {
     if (originalPin != null) {
       final pinDetail = _convertPinToPinDetail(originalPin!);
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PinDetailScreen(
-            pinDetail: pinDetail,
-            originalPin: originalPin,
-          ),
-        ),
-      );
+      showPinDetailPopup(context, pinDetail, originalPin: originalPin);
     }
   }
 

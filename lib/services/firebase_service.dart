@@ -286,6 +286,66 @@ class FirebaseService {
     }
   }
 
+  /// Delete a pin
+  Future<bool> deletePin(String pinId) async {
+    try {
+      final userId = currentUserId;
+      if (userId == null) throw Exception('User not authenticated');
+
+      // Get the pin data to verify ownership
+      final pinSnapshot = await _pinsRef.child(pinId).get();
+      if (!pinSnapshot.exists) {
+        throw Exception('Pin not found');
+      }
+
+      final pinData = pinSnapshot.value as Map<dynamic, dynamic>;
+      final pinUserId = pinData['userId'] as String?;
+
+      // Check if the current user owns this pin
+      if (pinUserId != userId) {
+        throw Exception('Unauthorized to delete this pin');
+      }
+
+      // Remove the pin from the pins collection
+      await _pinsRef.child(pinId).remove();
+
+      // Remove the pin ID from user's created pins
+      final userCreatedPinsSnapshot =
+          await _usersRef.child(userId).child('createdPinIds').get();
+      if (userCreatedPinsSnapshot.exists) {
+        for (final child in userCreatedPinsSnapshot.children) {
+          if (child.value == pinId) {
+            await child.ref.remove();
+            break;
+          }
+        }
+      }
+
+      // Remove the pin from all users' saved pins
+      final allUsersSnapshot = await _usersRef.get();
+      if (allUsersSnapshot.exists) {
+        for (final userChild in allUsersSnapshot.children) {
+          final userSavedPinsSnapshot =
+              await userChild.ref.child('savedPinIds').get();
+          if (userSavedPinsSnapshot.exists) {
+            for (final savedPinChild in userSavedPinsSnapshot.children) {
+              if (savedPinChild.value == pinId) {
+                await savedPinChild.ref.remove();
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      print('Pin deleted successfully: $pinId');
+      return true;
+    } catch (e) {
+      print('Failed to delete pin: $e');
+      return false;
+    }
+  }
+
   // ========== TAPU OPERATIONS ==========
 
   /// Create a new tapu

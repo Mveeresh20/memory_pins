@@ -23,6 +23,7 @@ import 'package:memory_pins_app/presentation/Pages/premium_purchase.dart';
 import 'package:memory_pins_app/presentation/Pages/profile_page.dart';
 import 'package:memory_pins_app/presentation/Pages/saved_pins.dart';
 import 'package:memory_pins_app/presentation/Pages/sign_up_page.dart';
+import 'package:memory_pins_app/presentation/Pages/splash_screen.dart';
 import 'package:memory_pins_app/presentation/Pages/tapu_detail_screen.dart';
 import 'package:memory_pins_app/presentation/Pages/tapu_pins.dart';
 import 'package:memory_pins_app/services/auth_service.dart';
@@ -127,8 +128,9 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         title: 'Memory Pins',
         navigatorKey: NavigationService.navigatorKey,
-        initialRoute: '/onboarding1',
+        initialRoute: '/splash',
         routes: {
+          '/splash': (context) => SplashScreen(),
           '/home': (context) => HomeScreen(),
           '/edit-profile': (context) => EditProfilePage(),
           '/create-pin': (context) => CreatePinScreen(),
@@ -158,8 +160,6 @@ class MyApp extends StatelessWidget {
           '/signup': (context) => SignUpPage(),
           '/my-tapu': (context) => MyTapusScreen(),
           '/tapu-detail': (context) => TapuDetailScreen(tapu: dummyTapu),
-          '/pin-detail': (context) =>
-              PinDetailScreen(pinDetail: dummyPinDetail),
           '/onboarding1': (context) => Onboarding1(),
           '/onboarding3': (context) => Onboarding3(),
           '/saved-pins': (context) => SavedPins(),
@@ -170,12 +170,6 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         ),
-
-        home: Onboarding1(),
-
-        // home: PinDetailScreen(pinDetail: dummyPinDetail),
-
-        // home:TapuDetailScreen(tapu: dummyTapu),
       ),
     );
   }

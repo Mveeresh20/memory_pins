@@ -7,6 +7,7 @@ import 'package:memory_pins_app/models/tapu.dart';
 import 'package:memory_pins_app/models/tapus.dart';
 import 'package:memory_pins_app/models/map_coordinates.dart';
 import 'package:memory_pins_app/presentation/Pages/tapu_detail_screen.dart';
+import 'package:memory_pins_app/presentation/Widgets/pin_detail_popup.dart';
 import 'package:memory_pins_app/providers/tapu_provider.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
@@ -16,13 +17,14 @@ import 'package:provider/provider.dart';
 class MapDetailCard extends StatelessWidget {
   final Tapu tapu;
   final VoidCallback? onClose;
-  final HomeTapuCardData? data; // Callback for when the card is closed/minimized
+  final HomeTapuCardData?
+      data; // Callback for when the card is closed/minimized
 
   const MapDetailCard({
     Key? key,
     required this.tapu,
     this.onClose,
-     this.data,
+    this.data,
   }) : super(key: key);
 
   void _navigateToTapuDetail(BuildContext context) {

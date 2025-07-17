@@ -4,6 +4,7 @@ import 'package:memory_pins_app/models/tapu_pins_item.dart';
 import 'package:memory_pins_app/models/pin.dart';
 import 'package:memory_pins_app/models/pin_detail.dart';
 import 'package:memory_pins_app/presentation/Pages/pin_detail_screen.dart';
+import 'package:memory_pins_app/presentation/Widgets/pin_detail_popup.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
@@ -69,20 +70,18 @@ class TapuPinsCard extends StatelessWidget {
                 GestureDetector(
                   onTap: () {
                     if (originalPin != null) {
-                      // Convert original Pin to PinDetail and navigate
+                      // Convert original Pin to PinDetail and show popup
                       final pinDetail = _convertPinToPinDetail(originalPin!);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PinDetailScreen(
-                            pinDetail: pinDetail,
-                            originalPin: originalPin,
-                          ),
+                      showPinDetailPopup(context, pinDetail,
+                          originalPin: originalPin);
+                    } else {
+                      // Show a message if no original pin data
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Pin details not available'),
+                          backgroundColor: Colors.orange,
                         ),
                       );
-                    } else {
-                      // Fallback to named route if no original pin
-                      NavigationService.pushNamed('/pin-detail');
                     }
                   },
                   child: Container(
