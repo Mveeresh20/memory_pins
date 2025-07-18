@@ -10,6 +10,7 @@ import 'package:memory_pins_app/services/app_integration_service.dart';
 import 'package:memory_pins_app/providers/user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
+import 'package:memory_pins_app/eula/eula_content.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -25,59 +26,85 @@ class _SignUpPageState extends State<SignUpPage> {
 
   void _handleSignUp() async {
     if (_formKey.currentState?.validate() ?? false) {
+      // Show EULA dialog on every sign-up attempt
+      showEulaAgreementDialog(
+        context,
+        withButtons: true,
+        onAgreed: (value) {
+          markEualStatusInLocal(agree: value);
+          if (value) {
+            // Proceed with sign up after EULA agreement
+            _performSignUp();
+          }
+        },
+      );
+    }
+  }
+
+  void _performSignUp() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final success = await _appService.signUpUser(
+        context,
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+        name: _nameController.text.trim(),
+      );
+
+      if (!mounted) return;
       setState(() {
-        _isLoading = true;
+        _isLoading = false;
       });
-      print("Form is valid");
 
-      try {
-        final success = await _appService.signUpUser(
+      if (success) {
+        Navigator.pushReplacement(
           context,
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-          name: _nameController.text.trim(),
+          MaterialPageRoute(builder: (context) => HomeScreen()),
         );
-        print("Trying to sign up with: ${_emailController.text.trim()}");
-
-        if (!mounted) return;
-        setState(() {
-          _isLoading = false;
-        });
-
-        if (success) {
-          print("User signed up successfully");
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => HomeScreen()),
-          );
-        } else {
-          final userProvider =
-              Provider.of<UserProvider>(context, listen: false);
-          final errorMessage =
-              userProvider.error ?? "Sign-up failed. Please try again.";
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      } catch (e) {
-        if (!mounted) return;
-        setState(() {
-          _isLoading = false;
-        });
+      } else {
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        final errorMessage =
+            userProvider.error ?? "Sign-up failed. Please try again.";
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("An error occurred: $e"),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
           ),
         );
       }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("An error occurred: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
   void _handleAppleSignUp() async {
+    // Show EULA dialog on every Apple sign-up attempt
+    showEulaAgreementDialog(
+      context,
+      withButtons: true,
+      onAgreed: (value) {
+        markEualStatusInLocal(agree: value);
+        if (value) {
+          // Proceed with Apple sign up after EULA agreement
+          _performAppleSignUp();
+        }
+      },
+    );
+  }
+
+  void _performAppleSignUp() async {
     setState(() {
       _isLoading = true;
     });
@@ -120,6 +147,21 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   void _handleAnonymousSignUp() async {
+    // Show EULA dialog on every anonymous sign-up attempt
+    showEulaAgreementDialog(
+      context,
+      withButtons: true,
+      onAgreed: (value) {
+        markEualStatusInLocal(agree: value);
+        if (value) {
+          // Proceed with anonymous sign up after EULA agreement
+          _performAnonymousSignUp();
+        }
+      },
+    );
+  }
+
+  void _performAnonymousSignUp() async {
     setState(() {
       _isLoading = true;
     });
@@ -213,7 +255,6 @@ class _SignUpPageState extends State<SignUpPage> {
     if (value == null || value.trim().isEmpty) return "Name is required";
     return null;
   }
-  
 
   @override
   Widget build(BuildContext context) {

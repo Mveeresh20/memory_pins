@@ -9,6 +9,7 @@ import 'package:memory_pins_app/providers/user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/ui.dart';
+import 'package:memory_pins_app/eula/eula_content.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -80,6 +81,21 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _handleAppleSignIn() async {
+    // Show EULA dialog on every Apple sign-in attempt
+    showEulaAgreementDialog(
+      context,
+      withButtons: true,
+      onAgreed: (value) {
+        markEualStatusInLocal(agree: value);
+        if (value) {
+          // Proceed with Apple sign in after EULA agreement
+          _performAppleSignIn();
+        }
+      },
+    );
+  }
+
+  void _performAppleSignIn() async {
     setState(() {
       _isAppleLoading = true;
     });
@@ -119,6 +135,21 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _handleAnonymousSignIn() async {
+    // Show EULA dialog on every anonymous sign-in attempt
+    showEulaAgreementDialog(
+      context,
+      withButtons: true,
+      onAgreed: (value) {
+        markEualStatusInLocal(agree: value);
+        if (value) {
+          // Proceed with anonymous sign in after EULA agreement
+          _performAnonymousSignIn();
+        }
+      },
+    );
+  }
+
+  void _performAnonymousSignIn() async {
     setState(() {
       _isGuestLoading = true;
     });

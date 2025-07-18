@@ -14,6 +14,8 @@ class Tapu {
   final int totalPins;
   final int views;
   final int plays;
+  final int imageCount; // Add image count field
+  final int audioCount; // Add audio count field
 
   Tapu({
     required this.id,
@@ -29,6 +31,8 @@ class Tapu {
     this.totalPins = 0,
     this.views = 0,
     this.plays = 0,
+    this.imageCount = 0, // Default to 0
+    this.audioCount = 0, // Default to 0
   });
 
   factory Tapu.fromTapus(Tapus tapus) {
@@ -46,6 +50,8 @@ class Tapu {
       totalPins: tapus.totalPins,
       views: 0,
       plays: 0,
+      imageCount: 0, // Will be calculated from pins
+      audioCount: 0, // Will be calculated from pins
     );
   }
 
@@ -66,6 +72,8 @@ class Tapu {
       totalPins: map['totalPins'] ?? 0,
       views: map['views'] ?? 0,
       plays: map['plays'] ?? 0,
+      imageCount: map['imageCount'] ?? 0, // Add image count from map
+      audioCount: map['audioCount'] ?? 0, // Add audio count from map
     );
   }
 }

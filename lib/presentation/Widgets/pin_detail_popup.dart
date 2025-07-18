@@ -5,6 +5,7 @@ import 'package:memory_pins_app/models/pin.dart';
 import 'package:memory_pins_app/presentation/Widgets/add_photo_grid_item.dart';
 import 'package:memory_pins_app/presentation/Widgets/audio_list_item.dart';
 import 'package:memory_pins_app/presentation/Widgets/photo_grid_item.dart';
+import 'package:memory_pins_app/presentation/Widgets/report_block_dialog.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/label_text_style.dart';
 import 'package:memory_pins_app/providers/pin_provider.dart';
@@ -31,6 +32,7 @@ class _PinDetailPopupState extends State<PinDetailPopup> {
   void initState() {
     super.initState();
     _checkIfPinIsSaved();
+    _incrementPinViews();
   }
 
   void _checkIfPinIsSaved() async {
@@ -41,6 +43,20 @@ class _PinDetailPopupState extends State<PinDetailPopup> {
       setState(() {
         _isSaved = isSaved;
       });
+    }
+  }
+
+  void _incrementPinViews() async {
+    if (widget.originalPin != null) {
+      final pinProvider = Provider.of<PinProvider>(context, listen: false);
+      await pinProvider.incrementPinViews(widget.originalPin!.id);
+    }
+  }
+
+  void _incrementPinPlays() async {
+    if (widget.originalPin != null) {
+      final pinProvider = Provider.of<PinProvider>(context, listen: false);
+      await pinProvider.incrementPinPlays(widget.originalPin!.id);
     }
   }
 
@@ -74,6 +90,22 @@ class _PinDetailPopupState extends State<PinDetailPopup> {
     }
   }
 
+  void _showReportBlockDialog() {
+    // Get the actual user ID and name from the pin data
+    final reportedUserId = widget.originalPin?.userId ?? 'unknown_user';
+    final reportedPinId = widget.originalPin?.id;
+    final reportedUserName = widget.originalPin?.userName ?? 'Unknown User';
+
+    showDialog(
+      context: context,
+      builder: (context) => ReportBlockDialog(
+        reportedUserId: reportedUserId,
+        reportedPinId: reportedPinId,
+        reportedUserName: reportedUserName,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -100,35 +132,50 @@ class _PinDetailPopupState extends State<PinDetailPopup> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '📍Title: ${widget.pinDetail.title}',
-                          style: GoogleFonts.nunitoSans(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
+                        Expanded(
+                          child: Text(
+                            '📍Title: ${widget.pinDetail.title}',
+                            style: GoogleFonts.nunitoSans(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
-                        GestureDetector(
-                          onTap: _toggleSave,
-                          child: Icon(
-                            _isSaved
-                                ? Icons.bookmark
-                                : Icons.bookmark_border_rounded,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => Navigator.of(context).pop(),
-                          child: Icon(
-                            Icons.close,
-                            color: Colors.white,
-                            size: 24,
-                          ),
+                        Row(
+                          children: [
+                            GestureDetector(
+                              onTap: _toggleSave,
+                              child: Icon(
+                                _isSaved
+                                    ? Icons.bookmark
+                                    : Icons.bookmark_border_rounded,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: _showReportBlockDialog,
+                              child: Icon(
+                                Icons.more_vert,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () => Navigator.of(context).pop(),
+                              child: Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    // Title
 
                     SizedBox(height: 24),
 
@@ -173,7 +220,10 @@ class _PinDetailPopupState extends State<PinDetailPopup> {
                       itemCount: widget.pinDetail.audios.length,
                       itemBuilder: (context, index) {
                         final audio = widget.pinDetail.audios[index];
-                        return AudioListItem(audio: audio);
+                        return AudioListItem(
+                          audio: audio,
+                          onPlayIncrement: _incrementPinPlays,
+                        );
                       },
                     ),
                     SizedBox(height: 30),

@@ -316,6 +316,24 @@ class PinProvider with ChangeNotifier {
     }
   }
 
+  // Increment pin plays
+  Future<void> incrementPinPlays(String pinId) async {
+    try {
+      await _firebaseService.incrementPinPlays(pinId);
+      // Update the pin in memory instead of reloading all
+      final pinIndex = _nearbyPins.indexWhere((pin) => pin.id == pinId);
+      if (pinIndex != -1) {
+        _nearbyPins[pinIndex] = _nearbyPins[pinIndex].copyWith(
+          playsCount: _nearbyPins[pinIndex].playsCount + 1,
+        );
+        _applyFilters();
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Failed to increment pin plays: $e');
+    }
+  }
+
   // Set filter radius
   void setFilterRadius(double radius) {
     _filterRadius = radius;

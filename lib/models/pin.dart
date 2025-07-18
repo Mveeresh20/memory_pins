@@ -9,6 +9,8 @@ class Pin {
   final String imageUrl;
   final String moodIconUrl; // Placeholder for mood icon
   final String? description; // Description/message for others (optional)
+  final String? userId; // User ID who created the pin
+  final String? userName; // User name who created the pin
 
   final int photoCount;
   final int audioCount;
@@ -29,6 +31,8 @@ class Pin {
     required this.imageUrl,
     required this.moodIconUrl,
     this.description, // Made optional
+    this.userId, // User ID who created the pin
+    this.userName, // User name who created the pin
     required this.photoCount,
     required this.audioCount,
     required this.imageUrls,
@@ -50,6 +54,8 @@ class Pin {
     String? imageUrl,
     String? moodIconUrl,
     String? description,
+    String? userId,
+    String? userName,
     int? photoCount,
     int? audioCount,
     List<String>? imageUrls,
@@ -69,6 +75,8 @@ class Pin {
       imageUrl: imageUrl ?? this.imageUrl,
       moodIconUrl: moodIconUrl ?? this.moodIconUrl,
       description: description ?? this.description,
+      userId: userId ?? this.userId,
+      userName: userName ?? this.userName,
       photoCount: photoCount ?? this.photoCount,
       audioCount: audioCount ?? this.audioCount,
       imageUrls: imageUrls ?? this.imageUrls,
@@ -91,6 +99,8 @@ class Pin {
       imageUrl: json['imageUrl'],
       moodIconUrl: json['moodIconUrl'],
       description: json['description'], // Already handles null
+      userId: json['userId'], // User ID who created the pin
+      userName: json['userName'], // User name who created the pin
       photoCount: json['photoCount'],
       audioCount: json['audioCount'],
       imageUrls: json['imageUrls'] ?? [],
@@ -114,6 +124,8 @@ class Pin {
       'imageUrl': imageUrl,
       'moodIconUrl': moodIconUrl,
       'description': description,
+      'userId': userId,
+      'userName': userName,
       'photoCount': photoCount,
       'audioCount': audioCount,
       'imageUrls': imageUrls,

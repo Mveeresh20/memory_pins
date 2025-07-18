@@ -44,12 +44,18 @@ class FirebaseService {
       final userId = currentUserId;
       if (userId == null) throw Exception('User not authenticated');
 
+      // Get user name from Firebase Auth or user profile
+      final user = _auth.currentUser;
+      final userName =
+          user?.displayName ?? user?.email?.split('@')[0] ?? 'Unknown User';
+
       final pinId = _pinsRef.push().key!;
       final timestamp = DateTime.now().millisecondsSinceEpoch;
 
       print('Storing pin data in Firebase:');
       print('Pin ID: $pinId');
       print('User ID: $userId');
+      print('User Name: $userName');
       print('Title: $title');
       print('Description: $description');
       print('Mood: $mood');
@@ -63,6 +69,7 @@ class FirebaseService {
       final pinData = {
         'pinId': pinId,
         'userId': userId,
+        'userName': userName,
         'title': title,
         'description': description,
         'mood': mood, // This is the mood icon URL
@@ -141,12 +148,14 @@ class FirebaseService {
             moodIconUrl: pinData['moodIconUrl'] ??
                 pinData['mood'] ??
                 '📍', // Use moodIconUrl first, fallback to mood
+            description: pinData['description'] ?? '',
+            userId: pinData['userId'], // User ID who created the pin
+            userName: pinData['userName'], // User name who created the pin
             photoCount: (pinData['photoUrls'] as List<dynamic>?)?.length ?? 0,
             audioCount: (pinData['audioUrls'] as List<dynamic>?)?.length ?? 0,
             imageUrls: List<String>.from(pinData['photoUrls'] ?? []),
             viewsCount: pinData['views'] ?? 0,
             playsCount: pinData['plays'] ?? 0,
-            description: pinData['description'] ?? '',
             audioUrls: List<String>.from(pinData['audioUrls'] ?? []),
             createdAt: pinData['timestamp'] != null
                 ? DateTime.fromMillisecondsSinceEpoch(pinData['timestamp'])
@@ -203,12 +212,14 @@ class FirebaseService {
           moodIconUrl: pinData['moodIconUrl'] ??
               pinData['mood'] ??
               '📍', // Use moodIconUrl first, fallback to mood
+          description: pinData['description'] ?? '',
+          userId: pinData['userId'], // User ID who created the pin
+          userName: pinData['userName'], // User name who created the pin
           photoCount: (pinData['photoUrls'] as List<dynamic>?)?.length ?? 0,
           audioCount: (pinData['audioUrls'] as List<dynamic>?)?.length ?? 0,
           imageUrls: List<String>.from(pinData['photoUrls'] ?? []),
           viewsCount: pinData['views'] ?? 0,
           playsCount: pinData['plays'] ?? 0,
-          description: pinData['description'] ?? '',
           audioUrls: List<String>.from(pinData['audioUrls'] ?? []),
           createdAt: pinData['timestamp'] != null
               ? DateTime.fromMillisecondsSinceEpoch(pinData['timestamp'])
@@ -257,12 +268,14 @@ class FirebaseService {
             ? pinData['photoUrls'][0]
             : '',
         moodIconUrl: pinData['moodIconUrl'] ?? pinData['mood'] ?? '📍',
+        description: pinData['description'] ?? '',
+        userId: pinData['userId'], // User ID who created the pin
+        userName: pinData['userName'], // User name who created the pin
         photoCount: (pinData['photoUrls'] as List<dynamic>?)?.length ?? 0,
         audioCount: (pinData['audioUrls'] as List<dynamic>?)?.length ?? 0,
         imageUrls: List<String>.from(pinData['photoUrls'] ?? []),
         viewsCount: pinData['views'] ?? 0,
         playsCount: pinData['plays'] ?? 0,
-        description: pinData['description'] ?? '',
         audioUrls: List<String>.from(pinData['audioUrls'] ?? []),
         createdAt: pinData['timestamp'] != null
             ? DateTime.fromMillisecondsSinceEpoch(pinData['timestamp'])
@@ -283,6 +296,18 @@ class FirebaseService {
       await ref.set(currentViews + 1);
     } catch (e) {
       print('Failed to increment pin views: $e');
+    }
+  }
+
+  /// Increment pin plays
+  Future<void> incrementPinPlays(String pinId) async {
+    try {
+      final ref = _pinsRef.child(pinId).child('plays');
+      final snapshot = await ref.get();
+      final currentPlays = snapshot.value as int? ?? 0;
+      await ref.set(currentPlays + 1);
+    } catch (e) {
+      print('Failed to increment pin plays: $e');
     }
   }
 

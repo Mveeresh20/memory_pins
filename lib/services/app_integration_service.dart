@@ -195,6 +195,15 @@ class AppIntegrationService {
     }
   }
 
+  /// Increment pin plays
+  Future<void> incrementPinPlays(BuildContext context, String pinId) async {
+    try {
+      await context.read<PinProvider>().incrementPinPlays(pinId);
+    } catch (e) {
+      print('Error incrementing pin plays: $e');
+    }
+  }
+
   /// Set filter radius for pins
   void setFilterRadius(BuildContext context, double radius) {
     context.read<PinProvider>().setFilterRadius(radius);

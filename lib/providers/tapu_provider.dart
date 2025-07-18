@@ -316,6 +316,11 @@ class TapuProvider with ChangeNotifier {
               photoUrls: tapus.emojis, // Use the emojis from Tapus
               totalPins: statistics.pinCount,
               views: statistics.viewsCount,
+              plays: statistics.playsCount, // Add plays count from statistics
+              imageCount:
+                  statistics.imageCount, // Add image count from statistics
+              audioCount:
+                  statistics.audioCount, // Add audio count from statistics
             );
 
             print('  Enhanced Tapu photoUrls: ${enhancedTapu.photoUrls}');

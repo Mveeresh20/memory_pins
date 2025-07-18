@@ -9,17 +9,15 @@ markEualStatusInLocal({bool agree = true}) {
 }
 
 bool isEualAgreementAgreedFromLocal() {
-  return SharedPref.pref.getBool(
-        "eula",
-      ) ??
-      false;
+  return SharedPref.pref.getBool("eula") ?? false;
 }
 
 showEulaAgreementDialog(BuildContext context,
     {bool withButtons = true, ValueChanged<bool>? onAgreed}) async {
-  showDialog(
+  return showDialog(
       context: context,
-      builder: (_) {
+      barrierDismissible: false, // Prevent closing by tapping outside
+      builder: (BuildContext context) {
         return Dialog(
           backgroundColor: AppColors.scaffoldBackground,
           child: SingleChildScrollView(
@@ -27,6 +25,7 @@ showEulaAgreementDialog(BuildContext context,
               padding:
                   const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const SizedBox(height: 10),
                   const Text(
@@ -35,6 +34,7 @@ showEulaAgreementDialog(BuildContext context,
                     style: TextStyle(
                       fontSize: 25,
                       fontWeight: FontWeight.w800,
+                      color: Colors.white,
                     ),
                     maxLines: 2,
                   ),
@@ -49,6 +49,7 @@ showEulaAgreementDialog(BuildContext context,
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
+                            color: Colors.white,
                           ),
                           maxLines: 50,
                         ),
@@ -58,6 +59,7 @@ showEulaAgreementDialog(BuildContext context,
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.normal,
+                              color: Colors.white,
                             ),
                             maxLines: 50,
                           ),
@@ -81,6 +83,7 @@ showEulaAgreementDialog(BuildContext context,
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.normal,
+                                      color: Colors.white,
                                     ),
                                     maxLines: 500,
                                   ),
@@ -95,34 +98,37 @@ showEulaAgreementDialog(BuildContext context,
                     );
                   }),
                   if (withButtons)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            side: const BorderSide(color: Colors.black),
-                          ),
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          child: const Text("Cancel"),
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.black,
-                            foregroundColor: Colors.white,
-                          ),
-                          onPressed: () {
-                            if (onAgreed != null) {
-                              onAgreed(true);
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.black,
+                              side: const BorderSide(color: Colors.black),
+                            ),
+                            onPressed: () {
                               Navigator.pop(context);
-                            }
-                          },
-                          child: const Text("Agree"),
-                        ),
-                      ],
+                            },
+                            child: const Text("Cancel"),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () {
+                              if (onAgreed != null) {
+                                onAgreed(true);
+                              }
+                              Navigator.pop(context);
+                            },
+                            child: const Text("Agree"),
+                          ),
+                        ],
+                      ),
                     )
                 ],
               ),

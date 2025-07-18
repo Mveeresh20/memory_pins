@@ -190,7 +190,7 @@ class MapDetailCard extends StatelessWidget {
                             const SizedBox(width: 4.0),
                             Flexible(
                               child: Text(
-                                '0 Images', // Will be calculated from pins
+                                '${tapu.imageCount} Images', // Use actual calculated image count
                                 style: text14W600White(context),
                               ),
                             ),
@@ -202,7 +202,7 @@ class MapDetailCard extends StatelessWidget {
                             const SizedBox(width: 4.0),
                             Flexible(
                               child: Text(
-                                ' 0 Audios', // Will be calculated from pins
+                                '${tapu.audioCount} Audios', // Use actual calculated audio count
                                 style: text14W600White(context),
                               ),
                             ),

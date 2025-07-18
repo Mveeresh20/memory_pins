@@ -9,8 +9,13 @@ import 'dart:async';
 
 class AudioListItem extends StatefulWidget {
   final AudioItem audio;
+  final VoidCallback? onPlayIncrement; // Callback to increment play count
 
-  const AudioListItem({Key? key, required this.audio}) : super(key: key);
+  const AudioListItem({
+    Key? key,
+    required this.audio,
+    this.onPlayIncrement,
+  }) : super(key: key);
 
   @override
   State<AudioListItem> createState() => _AudioListItemState();
@@ -21,6 +26,8 @@ class _AudioListItemState extends State<AudioListItem> {
   bool _isPlaying = false;
   bool _isLoading = false;
   bool _isInitialized = false;
+  bool _hasIncrementedPlay =
+      false; // Track if we've already incremented play count
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
   StreamSubscription? _positionSubscription;
@@ -83,6 +90,12 @@ class _AudioListItemState extends State<AudioListItem> {
         print('Pausing audio');
         await _audioPlayer!.pause();
       } else {
+        // Increment play count when starting to play for the first time
+        if (!_hasIncrementedPlay && widget.onPlayIncrement != null) {
+          widget.onPlayIncrement!();
+          _hasIncrementedPlay = true;
+        }
+
         // If position is at or near the end, restart from beginning
         if (_duration > Duration.zero &&
             _position >= _duration - Duration(milliseconds: 500)) {
@@ -307,7 +320,12 @@ class WaveformPainter extends CustomPainter {
         : 0.0;
 
     // Define the repeating height pattern
-    final heightPattern = [0.2, 0.4, 0.6, 0.4, ];
+    final heightPattern = [
+      0.2,
+      0.4,
+      0.6,
+      0.4,
+    ];
 
     int patternLength = heightPattern.length;
     int barSpacing = 4; // space between waveform bars

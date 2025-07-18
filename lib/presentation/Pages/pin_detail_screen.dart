@@ -34,6 +34,7 @@ class _PinDetailScreenState extends State<PinDetailScreen> {
     super.initState();
     // Check if pin is already saved
     _checkIfPinIsSaved();
+    _incrementPinViews();
   }
 
   void _checkIfPinIsSaved() async {
@@ -45,6 +46,20 @@ class _PinDetailScreenState extends State<PinDetailScreen> {
       setState(() {
         _isSaved = isSaved;
       });
+    }
+  }
+
+  void _incrementPinViews() async {
+    if (widget.originalPin != null) {
+      final pinProvider = Provider.of<PinProvider>(context, listen: false);
+      await pinProvider.incrementPinViews(widget.originalPin!.id);
+    }
+  }
+
+  void _incrementPinPlays() async {
+    if (widget.originalPin != null) {
+      final pinProvider = Provider.of<PinProvider>(context, listen: false);
+      await pinProvider.incrementPinPlays(widget.originalPin!.id);
     }
   }
 
@@ -176,7 +191,10 @@ class _PinDetailScreenState extends State<PinDetailScreen> {
                 itemCount: widget.pinDetail.audios.length,
                 itemBuilder: (context, index) {
                   final audio = widget.pinDetail.audios[index];
-                  return AudioListItem(audio: audio);
+                  return AudioListItem(
+                    audio: audio,
+                    onPlayIncrement: _incrementPinPlays,
+                  );
                 },
               ),
               const SizedBox(height: 30),

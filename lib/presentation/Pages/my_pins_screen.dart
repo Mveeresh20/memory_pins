@@ -109,21 +109,20 @@ class _MyPinsScreenState extends State<MyPinsScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-
                         GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Color(0xFF253743),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.arrow_back_ios_new,
-                          color: Colors.white, size: 20),
-                    ),
-                  ),
+                          onTap: () {
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Color(0xFF253743),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.arrow_back_ios_new,
+                                color: Colors.white, size: 20),
+                          ),
+                        ),
                         Text(
                           'My Pins',
                           style: GoogleFonts.nunitoSans(
@@ -513,16 +512,16 @@ class _MyPinsScreenState extends State<MyPinsScreen> {
                         ),
                         SizedBox(width: 5),
                         Text(
-                          '4 photos',
+                          '${pin.photoCount} photos',
                           style: TextStyle(color: Colors.white70),
-                        ), // Dummy count
+                        ), // Use actual pin data
                         SizedBox(width: 15),
                         Icon(Icons.audiotrack, color: Colors.white70, size: 18),
                         SizedBox(width: 5),
                         Text(
-                          '2 audios',
+                          '${pin.audioCount} audios',
                           style: TextStyle(color: Colors.white70),
-                        ), // Dummy count
+                        ), // Use actual pin data
                       ],
                     ),
                     const SizedBox(height: 15),
@@ -531,20 +530,10 @@ class _MyPinsScreenState extends State<MyPinsScreen> {
                       height: 80, // Height for image thumbnails
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
-                        itemCount: 4, // Dummy count
+                        itemCount: pin.imageUrls.length, // Use actual pin data
                         itemBuilder: (context, index) {
-                          // Use Image.network for images within the bottom sheet
-                          String imageUrl;
-                          if (index == 0) {
-                            imageUrl = Images.forestImg;
-                          } else if (index == 1) {
-                            imageUrl = Images.rainThunder;
-                          } else if (index == 2) {
-                            imageUrl = Images.riverImg;
-                          } else {
-                            imageUrl =
-                                Images.forestImg; // Default or another image
-                          }
+                          // Use actual images from the pin
+                          String imageUrl = pin.imageUrls[index];
 
                           return Padding(
                             padding: const EdgeInsets.only(right: 8.0),
@@ -592,16 +581,16 @@ class _MyPinsScreenState extends State<MyPinsScreen> {
                         Icon(Icons.visibility, color: Colors.white70, size: 18),
                         SizedBox(width: 5),
                         Text(
-                          '34 views',
+                          '${pin.viewsCount} views',
                           style: TextStyle(color: Colors.white70),
-                        ), // Dummy count
+                        ), // Use actual pin data
                         SizedBox(width: 15),
                         Icon(Icons.play_arrow, color: Colors.white70, size: 18),
                         SizedBox(width: 5),
                         Text(
-                          '12 plays',
+                          '${pin.playsCount} plays',
                           style: TextStyle(color: Colors.white70),
-                        ), // Dummy count
+                        ), // Use actual pin data
                       ],
                     ),
                     const SizedBox(height: 20),
