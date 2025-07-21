@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:memory_pins_app/presentation/Pages/home_screen.dart';
 import 'package:memory_pins_app/presentation/Pages/onboarding3.dart';
 import 'package:memory_pins_app/services/edit_profile_provider.dart';
+import 'package:memory_pins_app/providers/pin_provider.dart';
+import 'package:memory_pins_app/providers/tapu_provider.dart';
+import 'package:memory_pins_app/providers/user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -21,6 +24,8 @@ class AuthService {
 
   static Future<void> performLogout(BuildContext context) async {
     try {
+      print('Starting logout process...');
+
       // Clear all caches and data
       await _clearAllCaches();
 
@@ -33,6 +38,8 @@ class AuthService {
       // Sign out from Firebase
       await FirebaseAuth.instance.signOut();
 
+      print('Logout completed successfully');
+
       // Navigate to login only if context is still valid
       if (context.mounted) {
         Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
@@ -43,6 +50,29 @@ class AuthService {
       if (context.mounted) {
         Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
       }
+    }
+  }
+
+  // Clear caches when new user logs in
+  static Future<void> clearCachesOnLogin(BuildContext context) async {
+    try {
+      print('Clearing caches for new user login...');
+
+      // Clear all provider states
+      await _clearAllProviders(context);
+
+      // Force refresh hidden content for new user
+      try {
+        final pinProvider = Provider.of<PinProvider>(context, listen: false);
+        await pinProvider.forceRefreshHiddenContent();
+        print('Hidden content refreshed for new user');
+      } catch (e) {
+        print('Error refreshing hidden content on login: $e');
+      }
+
+      print('Caches cleared for new user login');
+    } catch (e) {
+      print('Error clearing caches on login: $e');
     }
   }
 
@@ -76,20 +106,32 @@ class AuthService {
       editProfileProvider.selectedGender = null;
       editProfileProvider.notifyListeners();
 
-      // // Clear EventProvider
-      // final eventProvider = Provider.of<EventProvider>(context, listen: false);
-      // eventProvider.logout();
+      // Clear PinProvider cache and hidden content
+      try {
+        final pinProvider = Provider.of<PinProvider>(context, listen: false);
+        await pinProvider.clearAllCaches();
+        print('PinProvider cache cleared successfully');
+      } catch (e) {
+        print('Error clearing PinProvider: $e');
+      }
 
-      // // Clear SponsorProvider
-      // final sponsorProvider = Provider.of<SponsorProvider>(
-      //   context,
-      //   listen: false,
-      // );
-      // await sponsorProvider.logout();
+      // Clear TapuProvider cache and hidden content
+      try {
+        final tapuProvider = Provider.of<TapuProvider>(context, listen: false);
+        await tapuProvider.clearAllCaches();
+        print('TapuProvider cache cleared successfully');
+      } catch (e) {
+        print('Error clearing TapuProvider: $e');
+      }
 
-      // // Clear RacerProvider
-      // final racerProvider = Provider.of<RacerProvider>(context, listen: false);
-      // racerProvider.logout();
+      // Clear UserProvider
+      try {
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        userProvider.clearUserData();
+        print('UserProvider cache cleared successfully');
+      } catch (e) {
+        print('Error clearing UserProvider: $e');
+      }
 
       print('All providers cleared successfully');
     } catch (e) {

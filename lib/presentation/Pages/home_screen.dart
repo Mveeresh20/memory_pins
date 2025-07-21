@@ -58,6 +58,15 @@ class _HomeScreenState extends State<HomeScreen> {
       print('HomeScreen - Initializing PinProvider for first time...');
       await pinProvider.initialize(); // Wait for initialization to complete
       print('HomeScreen - PinProvider initialization completed');
+    } else {
+      // If already initialized, check if hidden content needs refresh
+      print(
+          'HomeScreen - PinProvider already initialized, checking hidden content...');
+      if (!pinProvider.isHiddenContentStable) {
+        print('HomeScreen - Hidden content not stable, refreshing...');
+        await pinProvider.forceRefreshHiddenContent();
+        print('HomeScreen - Hidden content refreshed');
+      }
     }
 
     // Mark first load as complete

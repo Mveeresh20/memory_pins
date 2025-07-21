@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:memory_pins_app/models/pin.dart';
 import 'package:memory_pins_app/services/firebase_service.dart';
 import 'package:memory_pins_app/services/location_service.dart';
+import 'package:memory_pins_app/services/report_service.dart';
 import 'package:memory_pins_app/utills/Constants/performance_monitor.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -9,6 +10,7 @@ import 'package:geocoding/geocoding.dart';
 class PinProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
   final LocationService _locationService = LocationService();
+  final ReportService _reportService = ReportService();
 
   // State variables
   List<Pin> _nearbyPins = [];
@@ -26,6 +28,11 @@ class PinProvider with ChangeNotifier {
   // Cache for distance calculations
   Map<String, double> _distanceCache = {};
   Map<String, String> _distanceTextCache = {};
+
+  // Cache for hidden content
+  Set<String> _hiddenPinIds = {};
+  Set<String> _hiddenUserIds = {};
+  bool _hiddenContentLoaded = false;
 
   // Getters
   List<Pin> get nearbyPins => _nearbyPins;
@@ -60,7 +67,12 @@ class PinProvider with ChangeNotifier {
         print(
             'PinProvider - Current location: $_currentLatitude, $_currentLongitude');
 
-        // Load only nearby pins initially (most important for home screen)
+        // Load hidden content FIRST (critical for filtering)
+        print('PinProvider - Loading hidden content...');
+        await _loadHiddenContent();
+        print('PinProvider - Hidden content loaded');
+
+        // Load nearby pins
         print('PinProvider - Loading nearby pins...');
         await loadNearbyPins();
         print('PinProvider - Loaded ${_nearbyPins.length} nearby pins');
@@ -85,7 +97,7 @@ class PinProvider with ChangeNotifier {
   // Load non-critical data in background
   Future<void> _loadBackgroundData() async {
     try {
-      // Load user pins and saved pins in parallel
+      // Load user pins and saved pins in parallel (hidden content already loaded)
       await Future.wait([
         loadUserPins(),
         loadSavedPins(),
@@ -191,36 +203,41 @@ class PinProvider with ChangeNotifier {
   }) async {
     try {
       _isLoading = true;
+      _error = null;
       notifyListeners();
 
-      print('Creating pin with:');
-      print('Title: $title');
-      print('Description: $description');
-      print('Mood: $mood');
-      print('Photo URLs: $photoUrls');
-      print('Audio URLs: $audioUrls');
-      print('Latitude: $latitude');
-      print('Longitude: $longitude');
+      // Get location if not provided
+      if (latitude == null || longitude == null) {
+        await _getCurrentLocation();
+        latitude = _currentLatitude;
+        longitude = _currentLongitude;
+      }
 
-      // Use provided coordinates or fall back to current location
-      final pinLatitude = latitude ?? _currentLatitude;
-      final pinLongitude = longitude ?? _currentLongitude;
+      if (latitude == null || longitude == null) {
+        throw Exception('Location not available');
+      }
 
+      print('Creating pin at location: $latitude, $longitude');
+
+      // Get location name
+      final location = await _getLocationName(latitude, longitude);
+
+      // Create pin in Firebase
       final pinId = await _firebaseService.createPin(
         title: title,
         description: description,
         mood: mood,
-        latitude: pinLatitude,
-        longitude: pinLongitude,
-        location: await _getLocationName(pinLatitude, pinLongitude),
+        latitude: latitude,
+        longitude: longitude,
+        location: location,
         photoUrls: photoUrls,
         audioUrls: audioUrls,
       );
 
-      print('Pin created with ID: $pinId');
+      print('Pin created with ID: $pinId at location: $latitude, $longitude');
 
-      // Reload user pins to include the new pin
-      await loadUserPins();
+      // Reload nearby pins to include the new pin
+      await loadNearbyPins();
 
       _isLoading = false;
       notifyListeners();
@@ -371,9 +388,11 @@ class PinProvider with ChangeNotifier {
     print('Total nearby pins: ${_nearbyPins.length}');
     print('Distance cache size: ${_distanceCache.length}');
 
+    List<Pin> distanceFilteredPins = [];
+
     if (_filterType == 'nearby') {
       // Show pins within 0-5KM range
-      _filteredPins = _nearbyPins.where((pin) {
+      distanceFilteredPins = _nearbyPins.where((pin) {
         final distance = _distanceCache[pin.id] ?? 0.0;
         final isInRange = distance >= 0 && distance <= 5.0;
         if (isInRange) {
@@ -384,7 +403,7 @@ class PinProvider with ChangeNotifier {
       }).toList();
     } else if (_filterType == 'far') {
       // Show pins within 5-30KM range
-      _filteredPins = _nearbyPins.where((pin) {
+      distanceFilteredPins = _nearbyPins.where((pin) {
         final distance = _distanceCache[pin.id] ?? 0.0;
         final isInRange = distance > 5.0 && distance <= 30.0;
         if (isInRange) {
@@ -394,12 +413,253 @@ class PinProvider with ChangeNotifier {
         return isInRange;
       }).toList();
     } else {
-      _filteredPins = _nearbyPins;
+      distanceFilteredPins = _nearbyPins;
     }
+
+    // Apply content filtering (hide reported/blocked content)
+    _filteredPins = _filterHiddenContent(distanceFilteredPins);
 
     print('Filter applied: $_filterType');
     print('Total pins: ${_nearbyPins.length}');
+    print('Distance filtered pins: ${distanceFilteredPins.length}');
+    print('Final filtered pins: ${_filteredPins.length}');
+  }
+
+  // Filter out hidden content (reported pins and content from blocked users)
+  List<Pin> _filterHiddenContent(List<Pin> pins) {
+    print('=== FILTERING HIDDEN CONTENT ===');
+    print('Input pins: ${pins.length}');
+    print('Hidden pin IDs: $_hiddenPinIds');
+    print('Hidden user IDs: $_hiddenUserIds');
+
+    final filteredPins = <Pin>[];
+
+    for (final pin in pins) {
+      if (_shouldShowPin(pin)) {
+        filteredPins.add(pin);
+        print('✓ Pin "${pin.title}" (${pin.id}) - SHOWN');
+      } else {
+        print('✗ Pin "${pin.title}" (${pin.id}) - HIDDEN');
+      }
+    }
+
+    print('Output pins: ${filteredPins.length}');
+    print('===============================');
+
+    return filteredPins;
+  }
+
+  // Check if a pin should be shown (not hidden)
+  bool _shouldShowPin(Pin pin) {
+    // Check if this specific pin is hidden (reported)
+    if (_hiddenPinIds.contains(pin.id)) {
+      print('  - Pin ${pin.id} is specifically hidden (reported)');
+      return false;
+    }
+
+    // Check if the pin creator is blocked
+    if (_hiddenUserIds.contains(pin.userId)) {
+      print('  - Pin ${pin.id} creator ${pin.userId} is blocked');
+      return false;
+    }
+
+    return true;
+  }
+
+  // Load hidden content for the current user
+  Future<void> _loadHiddenContent() async {
+    try {
+      if (_hiddenContentLoaded) return;
+
+      print('Loading hidden content...');
+      print('Current user ID: ${_reportService.currentUserId}');
+
+      final hiddenContent = await _reportService.getHiddenContent();
+      print('Raw hidden content: ${hiddenContent.length} items');
+
+      _hiddenPinIds.clear();
+      _hiddenUserIds.clear();
+
+      for (final content in hiddenContent) {
+        print('Processing hidden content: ${content.id}');
+        print('  - User ID: ${content.userId}');
+        print('  - Hidden Pin ID: ${content.hiddenPinId}');
+        print('  - Hidden User ID: ${content.hiddenUserId}');
+        print('  - Reason: ${content.reason}');
+
+        if (content.hiddenPinId != null) {
+          _hiddenPinIds.add(content.hiddenPinId!);
+          print('  ✓ Added hidden pin: ${content.hiddenPinId}');
+        }
+        if (content.hiddenUserId != null) {
+          _hiddenUserIds.add(content.hiddenUserId!);
+          print('  ✓ Added hidden user: ${content.hiddenUserId}');
+        }
+      }
+
+      _hiddenContentLoaded = true;
+      print('Hidden content loaded successfully:');
+      print('  - Hidden pins: ${_hiddenPinIds.length}');
+      print('  - Hidden users: ${_hiddenUserIds.length}');
+      print('  - Hidden pin IDs: $_hiddenPinIds');
+      print('  - Hidden user IDs: $_hiddenUserIds');
+    } catch (e) {
+      print('Error loading hidden content: $e');
+    }
+  }
+
+  // Refresh hidden content cache
+  Future<void> refreshHiddenContent() async {
+    print('Refreshing hidden content...');
+    print('Current user ID: ${_reportService.currentUserId}');
+
+    // Store current hidden content for comparison
+    final oldHiddenPinIds = Set<String>.from(_hiddenPinIds);
+    final oldHiddenUserIds = Set<String>.from(_hiddenUserIds);
+
+    _hiddenContentLoaded = false;
+    await _loadHiddenContent();
+
+    // Check if hidden content changed
+    final hiddenContentChanged = !setEquals(oldHiddenPinIds, _hiddenPinIds) ||
+        !setEquals(oldHiddenUserIds, _hiddenUserIds);
+
+    if (hiddenContentChanged) {
+      print('Hidden content changed, re-applying filters...');
+      _applyFilters(); // Re-apply filters with updated hidden content
+      notifyListeners();
+    } else {
+      print('Hidden content unchanged, skipping filter re-application');
+    }
+  }
+
+  // Force refresh hidden content (for user switching)
+  Future<void> forceRefreshHiddenContent() async {
+    print('Force refreshing hidden content...');
+    print('Current user ID: ${_reportService.currentUserId}');
+    _hiddenContentLoaded = false;
+    _hiddenPinIds.clear();
+    _hiddenUserIds.clear();
+    await _loadHiddenContent();
+    _applyFilters(); // Re-apply filters with new hidden content
+    notifyListeners();
+  }
+
+  // Check if hidden content is stable (for debugging)
+  bool get isHiddenContentStable {
+    return _hiddenContentLoaded && _hiddenPinIds.isNotEmpty;
+  }
+
+  // Get hidden content summary for debugging
+  Map<String, dynamic> getHiddenContentSummary() {
+    return {
+      'loaded': _hiddenContentLoaded,
+      'hiddenPinCount': _hiddenPinIds.length,
+      'hiddenUserCount': _hiddenUserIds.length,
+      'hiddenPinIds': _hiddenPinIds.toList(),
+      'hiddenUserIds': _hiddenUserIds.toList(),
+    };
+  }
+
+  // Debug method to check current filtering state
+  void debugFilteringState() {
+    print('=== PIN PROVIDER DEBUG STATE ===');
+    print('Hidden content loaded: $_hiddenContentLoaded');
+    print('Hidden pin IDs: $_hiddenPinIds');
+    print('Hidden user IDs: $_hiddenUserIds');
+    print('Total nearby pins: ${_nearbyPins.length}');
     print('Filtered pins: ${_filteredPins.length}');
+    print('User pins: ${_userPins.length}');
+    print('================================');
+  }
+
+  // Test method to verify filtering is working
+  void testFiltering() {
+    print('=== TESTING FILTERING ===');
+    for (final pin in _nearbyPins) {
+      final shouldShow = _shouldShowPin(pin);
+      print(
+          'Pin "${pin.title}" (${pin.id}) by user ${pin.userId}: ${shouldShow ? "SHOWN" : "HIDDEN"}');
+    }
+    print('========================');
+  }
+
+  // Debug method to show pin creators
+  void debugPinCreators() {
+    print('=== PIN CREATORS DEBUG ===');
+    print('Current user ID: ${_reportService.currentUserId}');
+    for (final pin in _nearbyPins) {
+      final isBlocked = _hiddenUserIds.contains(pin.userId);
+      final isReported = _hiddenPinIds.contains(pin.id);
+      final isOwnPin = pin.userId == _reportService.currentUserId;
+      print('Pin "${pin.title}" (${pin.id}) created by user: ${pin.userId}');
+      print('  - Is creator blocked? $isBlocked');
+      print('  - Is pin reported? $isReported');
+      print('  - Is own pin? $isOwnPin');
+      print('  - Will be shown? ${_shouldShowPin(pin)}');
+    }
+    print('Hidden user IDs: $_hiddenUserIds');
+    print('Hidden pin IDs: $_hiddenPinIds');
+    print('==========================');
+  }
+
+  // Debug method to show detailed filtering state
+  void debugDetailedFilteringState() {
+    print('=== DETAILED FILTERING STATE DEBUG ===');
+    print('Hidden pin IDs: $_hiddenPinIds');
+    print('Hidden user IDs: $_hiddenUserIds');
+    print('Total nearby pins: ${_nearbyPins.length}');
+    print('Filtered pins: ${_filteredPins.length}');
+    print('=============================');
+  }
+
+  // Clear all hidden content (for testing)
+  Future<void> clearAllHiddenContent() async {
+    print('Clearing all hidden content...');
+    await _reportService.clearAllHiddenContent();
+    await refreshHiddenContent();
+  }
+
+  // Clear only reported pins (for testing)
+  Future<void> clearReportedPins() async {
+    print('Clearing only reported pins...');
+    await _reportService.clearReportedPins();
+    await refreshHiddenContent();
+  }
+
+  // Clear only blocked users (for testing)
+  Future<void> clearBlockedUsers() async {
+    print('Clearing only blocked users...');
+    await _reportService.clearBlockedUsers();
+    await refreshHiddenContent();
+  }
+
+  // Clear all caches (for logout)
+  Future<void> clearAllCaches() async {
+    print('PinProvider - Clearing all caches...');
+
+    // Clear hidden content
+    _hiddenContentLoaded = false;
+    _hiddenPinIds.clear();
+    _hiddenUserIds.clear();
+
+    // Clear pin data
+    _nearbyPins.clear();
+    _userPins.clear();
+    _savedPins.clear();
+    _filteredPins.clear();
+
+    // Clear distance caches
+    _distanceCache.clear();
+    _distanceTextCache.clear();
+
+    // Reset state
+    _isInitialized = false;
+    _isLoading = false;
+    _error = null;
+
+    print('PinProvider - All caches cleared successfully');
+    notifyListeners();
   }
 
   // Filter pins by month
@@ -477,10 +737,5 @@ class PinProvider with ChangeNotifier {
   // Get formatted distance for a specific pin from current location (cached)
   String getPinDistance(Pin pin) {
     return _distanceTextCache[pin.id] ?? 'Unknown distance';
-  }
-
-  // Get cached distance for a pin
-  double getCachedDistance(Pin pin) {
-    return _distanceCache[pin.id] ?? 0.0;
   }
 }

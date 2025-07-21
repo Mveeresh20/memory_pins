@@ -90,6 +90,56 @@ class BlockModel {
   }
 }
 
+// New model for tracking hidden content
+class HiddenContentModel {
+  final String id;
+  final String userId; // User who should not see this content
+  final String? hiddenPinId; // Specific pin to hide (for reports)
+  final String? hiddenTapuId; // Specific tapu to hide (for reports)
+  final String? hiddenUserId; // User whose content to hide (for blocks)
+  final String reason; // 'reported' or 'blocked'
+  final DateTime hiddenAt;
+  final String?
+      reportId; // Reference to the report if this was hidden due to reporting
+
+  HiddenContentModel({
+    required this.id,
+    required this.userId,
+    this.hiddenPinId,
+    this.hiddenTapuId,
+    this.hiddenUserId,
+    required this.reason,
+    required this.hiddenAt,
+    this.reportId,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'userId': userId,
+      'hiddenPinId': hiddenPinId,
+      'hiddenTapuId': hiddenTapuId,
+      'hiddenUserId': hiddenUserId,
+      'reason': reason,
+      'hiddenAt': hiddenAt.toIso8601String(),
+      'reportId': reportId,
+    };
+  }
+
+  factory HiddenContentModel.fromMap(Map<String, dynamic> map) {
+    return HiddenContentModel(
+      id: map['id'] ?? '',
+      userId: map['userId'] ?? '',
+      hiddenPinId: map['hiddenPinId'],
+      hiddenTapuId: map['hiddenTapuId'],
+      hiddenUserId: map['hiddenUserId'],
+      reason: map['reason'] ?? '',
+      hiddenAt: DateTime.parse(map['hiddenAt']),
+      reportId: map['reportId'],
+    );
+  }
+}
+
 // Report reasons for different content types
 class ReportReasons {
   static const List<String> userReasons = [

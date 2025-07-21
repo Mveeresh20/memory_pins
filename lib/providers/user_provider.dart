@@ -324,4 +324,18 @@ class UserProvider with ChangeNotifier {
   DateTime? get lastSignInDate {
     return _currentUser?.metadata.lastSignInTime;
   }
+
+  // Clear user data (for logout)
+  void clearUserData() {
+    print('UserProvider - Clearing user data...');
+
+    _currentUser = null;
+    _userProfile = null;
+    _isLoading = false;
+    _error = null;
+    _isAuthenticated = false;
+
+    print('UserProvider - User data cleared successfully');
+    notifyListeners();
+  }
 }

@@ -5,6 +5,7 @@ import 'package:memory_pins_app/models/pin.dart';
 import 'package:memory_pins_app/models/map_cordinates.dart';
 import 'package:memory_pins_app/services/firebase_service.dart';
 import 'package:memory_pins_app/services/location_service.dart';
+import 'package:memory_pins_app/services/report_service.dart';
 import 'package:memory_pins_app/utills/Constants/performance_monitor.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -12,6 +13,7 @@ import 'package:geocoding/geocoding.dart';
 class TapuProvider with ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
   final LocationService _locationService = LocationService();
+  final ReportService _reportService = ReportService();
 
   // State variables
   List<Tapus> _userTapus = [];
@@ -28,6 +30,12 @@ class TapuProvider with ChangeNotifier {
   // Cache for distance calculations
   Map<String, double> _distanceCache = {};
   Map<String, String> _distanceTextCache = {};
+
+  // Cache for hidden content
+  Set<String> _hiddenTapuIds = {};
+  Set<String> _hiddenUserIds = {};
+  Set<String> _hiddenPinIds = {}; // For filtering pins within tapus
+  bool _hiddenContentLoaded = false;
 
   // Getters
   List<Tapus> get userTapus => _userTapus;
@@ -54,7 +62,12 @@ class TapuProvider with ChangeNotifier {
         // Get current location first
         await _getCurrentLocation();
 
-        // Load only nearby tapus initially (most important for map view screen)
+        // Load hidden content FIRST (critical for filtering)
+        print('TapuProvider - Loading hidden content...');
+        await _loadHiddenContent();
+        print('TapuProvider - Hidden content loaded');
+
+        // Load nearby tapus
         await loadNearbyTapus(_tapuRadius);
 
         _isInitialized = true;
@@ -74,6 +87,7 @@ class TapuProvider with ChangeNotifier {
   // Load non-critical data in background
   Future<void> _loadBackgroundData() async {
     try {
+      // Load user tapus in background (hidden content already loaded)
       await loadUserTapus();
     } catch (e) {
       print('Background data loading failed: $e');
@@ -324,7 +338,13 @@ class TapuProvider with ChangeNotifier {
             );
 
             print('  Enhanced Tapu photoUrls: ${enhancedTapu.photoUrls}');
-            _nearbyTapus.add(enhancedTapu);
+
+            // Check if this tapu should be shown
+            if (_shouldShowTapu(enhancedTapu)) {
+              _nearbyTapus.add(enhancedTapu);
+            } else {
+              print('  Tapu "${tapus.name}" is hidden for current user');
+            }
           } else {
             print(
                 'Tapu "${tapus.name}" is outside the ${radiusInKm}km range (${distance.toStringAsFixed(1)}km)');
@@ -628,8 +648,12 @@ class TapuProvider with ChangeNotifier {
       print(
           'Found ${nearbyPins.length} pins within 5KM of tapu "${tapu.name}"');
 
+      // Apply hidden content filtering (hide reported/blocked pins)
+      final filteredPins = _filterHiddenPins(nearbyPins);
+      print('After filtering hidden content: ${filteredPins.length} pins');
+
       // Sort by distance from tapu center
-      nearbyPins.sort((a, b) {
+      filteredPins.sort((a, b) {
         final distanceA = getDistance(
           tapu.centerCoordinates.latitude,
           tapu.centerCoordinates.longitude,
@@ -645,11 +669,11 @@ class TapuProvider with ChangeNotifier {
         return distanceA.compareTo(distanceB);
       });
 
-      _tapuPins = nearbyPins;
+      _tapuPins = filteredPins;
       _isLoading = false;
       notifyListeners();
 
-      return nearbyPins;
+      return filteredPins;
     } catch (e) {
       _error = 'Failed to load pins around tapu: $e';
       _isLoading = false;
@@ -834,5 +858,198 @@ class TapuProvider with ChangeNotifier {
       notifyListeners();
       return [];
     }
+  }
+
+  // Check if a tapu should be shown (not hidden)
+  bool _shouldShowTapu(Tapu tapu) {
+    // Check if this specific tapu is hidden (reported)
+    if (_hiddenTapuIds.contains(tapu.id)) {
+      print('  - Tapu ${tapu.id} is specifically hidden (reported)');
+      return false;
+    }
+
+    // Note: Tapu models don't have userId field, so we can't check for blocked users
+    // Only specific tapu reports are supported
+    return true;
+  }
+
+  // Filter out hidden pins (reported pins and content from blocked users)
+  List<Pin> _filterHiddenPins(List<Pin> pins) {
+    print('=== FILTERING HIDDEN PINS IN TAPU ===');
+    print('Input pins: ${pins.length}');
+    print('Hidden pin IDs: $_hiddenPinIds');
+    print('Hidden user IDs: $_hiddenUserIds');
+
+    final filteredPins = <Pin>[];
+
+    for (final pin in pins) {
+      if (_shouldShowPin(pin)) {
+        filteredPins.add(pin);
+        print('✓ Pin "${pin.title}" (${pin.id}) - SHOWN');
+      } else {
+        print('✗ Pin "${pin.title}" (${pin.id}) - HIDDEN');
+      }
+    }
+
+    print('Output pins: ${filteredPins.length}');
+    print('===============================');
+
+    return filteredPins;
+  }
+
+  // Check if a pin should be shown (not hidden) - same logic as PinProvider
+  bool _shouldShowPin(Pin pin) {
+    // Check if this specific pin is hidden (reported)
+    if (_hiddenPinIds.contains(pin.id)) {
+      print('  - Pin ${pin.id} is specifically hidden (reported)');
+      return false;
+    }
+
+    // Check if the pin creator is blocked
+    if (_hiddenUserIds.contains(pin.userId)) {
+      print('  - Pin ${pin.id} creator ${pin.userId} is blocked');
+      return false;
+    }
+
+    return true;
+  }
+
+  // Load hidden content for the current user
+  Future<void> _loadHiddenContent() async {
+    try {
+      if (_hiddenContentLoaded) return;
+
+      print('TapuProvider - Loading hidden content...');
+      print('Current user ID: ${_reportService.currentUserId}');
+
+      final hiddenContent = await _reportService.getHiddenContent();
+      print('Raw hidden content: ${hiddenContent.length} items');
+
+      _hiddenTapuIds.clear();
+      _hiddenUserIds.clear();
+      _hiddenPinIds.clear();
+
+      for (final content in hiddenContent) {
+        print('Processing hidden content: ${content.id}');
+        print('  - User ID: ${content.userId}');
+        print('  - Hidden Pin ID: ${content.hiddenPinId}');
+        print('  - Hidden Tapu ID: ${content.hiddenTapuId}');
+        print('  - Hidden User ID: ${content.hiddenUserId}');
+        print('  - Reason: ${content.reason}');
+
+        if (content.hiddenPinId != null) {
+          _hiddenPinIds.add(content.hiddenPinId!);
+          print('  ✓ Added hidden pin: ${content.hiddenPinId}');
+        }
+        if (content.hiddenTapuId != null) {
+          _hiddenTapuIds.add(content.hiddenTapuId!);
+          print('  ✓ Added hidden tapu: ${content.hiddenTapuId}');
+        }
+        if (content.hiddenUserId != null) {
+          _hiddenUserIds.add(content.hiddenUserId!);
+          print('  ✓ Added hidden user: ${content.hiddenUserId}');
+        }
+      }
+
+      _hiddenContentLoaded = true;
+      print('Hidden content loaded successfully:');
+      print('  - Hidden pins: ${_hiddenPinIds.length}');
+      print('  - Hidden tapus: ${_hiddenTapuIds.length}');
+      print('  - Hidden users: ${_hiddenUserIds.length}');
+      print('  - Hidden pin IDs: $_hiddenPinIds');
+      print('  - Hidden tapu IDs: $_hiddenTapuIds');
+      print('  - Hidden user IDs: $_hiddenUserIds');
+    } catch (e) {
+      print('Error loading hidden content: $e');
+    }
+  }
+
+  // Refresh hidden content cache
+  Future<void> refreshHiddenContent() async {
+    print('TapuProvider - Refreshing hidden content...');
+    print('Current user ID: ${_reportService.currentUserId}');
+
+    // Store current hidden content for comparison
+    final oldHiddenTapuIds = Set<String>.from(_hiddenTapuIds);
+    final oldHiddenUserIds = Set<String>.from(_hiddenUserIds);
+    final oldHiddenPinIds = Set<String>.from(_hiddenPinIds);
+
+    _hiddenContentLoaded = false;
+    await _loadHiddenContent();
+
+    // Check if hidden content changed
+    final hiddenContentChanged = !setEquals(oldHiddenTapuIds, _hiddenTapuIds) ||
+        !setEquals(oldHiddenUserIds, _hiddenUserIds) ||
+        !setEquals(oldHiddenPinIds, _hiddenPinIds);
+
+    if (hiddenContentChanged) {
+      print('Hidden content changed, re-loading nearby tapus...');
+      await loadNearbyTapus(_tapuRadius);
+      notifyListeners();
+    } else {
+      print('Hidden content unchanged, skipping re-load');
+    }
+  }
+
+  // Force refresh hidden content (for user switching)
+  Future<void> forceRefreshHiddenContent() async {
+    print('TapuProvider - Force refreshing hidden content...');
+    print('Current user ID: ${_reportService.currentUserId}');
+    _hiddenContentLoaded = false;
+    _hiddenTapuIds.clear();
+    _hiddenUserIds.clear();
+    _hiddenPinIds.clear();
+    await _loadHiddenContent();
+    await loadNearbyTapus(_tapuRadius);
+    notifyListeners();
+  }
+
+  // Check if hidden content is stable (for debugging)
+  bool get isHiddenContentStable {
+    return _hiddenContentLoaded &&
+        (_hiddenTapuIds.isNotEmpty ||
+            _hiddenPinIds.isNotEmpty ||
+            _hiddenUserIds.isNotEmpty);
+  }
+
+  // Get hidden content summary for debugging
+  Map<String, dynamic> getHiddenContentSummary() {
+    return {
+      'loaded': _hiddenContentLoaded,
+      'hiddenPinCount': _hiddenPinIds.length,
+      'hiddenTapuCount': _hiddenTapuIds.length,
+      'hiddenUserCount': _hiddenUserIds.length,
+      'hiddenPinIds': _hiddenPinIds.toList(),
+      'hiddenTapuIds': _hiddenTapuIds.toList(),
+      'hiddenUserIds': _hiddenUserIds.toList(),
+    };
+  }
+
+  // Clear all caches (for logout)
+  Future<void> clearAllCaches() async {
+    print('TapuProvider - Clearing all caches...');
+
+    // Clear hidden content
+    _hiddenContentLoaded = false;
+    _hiddenTapuIds.clear();
+    _hiddenUserIds.clear();
+    _hiddenPinIds.clear();
+
+    // Clear tapu data
+    _nearbyTapus.clear();
+    _userTapus.clear();
+    _allTapus.clear();
+
+    // Clear distance caches
+    _distanceCache.clear();
+    _distanceTextCache.clear();
+
+    // Reset state
+    _isInitialized = false;
+    _isLoading = false;
+    _error = null;
+
+    print('TapuProvider - All caches cleared successfully');
+    notifyListeners();
   }
 }

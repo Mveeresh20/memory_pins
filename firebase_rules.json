@@ -1,7 +1,7 @@
 {
     "rules": {
-        ".read": true,
-        ".write": true,
+        ".read": "true",
+        ".write": "true",
         "pins": {
             ".indexOn": [
                 "userId",
@@ -24,6 +24,28 @@
         "saved_pins": {
             ".indexOn": [
                 "userId"
+            ]
+        },
+        "reports": {
+            ".indexOn": [
+                "reporterUserId",
+                "reportedUserId",
+                "reportedPinId",
+                "reportedTapuId"
+            ]
+        },
+        "blocks": {
+            ".indexOn": [
+                "blockerUserId",
+                "blockedUserId"
+            ]
+        },
+        "hidden_content": {
+            ".indexOn": [
+                "userId",
+                "hiddenPinId",
+                "hiddenTapuId",
+                "hiddenUserId"
             ]
         }
     }

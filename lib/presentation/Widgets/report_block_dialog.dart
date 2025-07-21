@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:memory_pins_app/models/report_model.dart';
 import 'package:memory_pins_app/services/report_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import 'package:memory_pins_app/providers/pin_provider.dart';
+import 'package:memory_pins_app/providers/tapu_provider.dart';
 
 class ReportBlockDialog extends StatefulWidget {
   final String reportedUserId;
@@ -95,7 +98,7 @@ class _ReportBlockDialogState extends State<ReportBlockDialog> {
           ListTile(
             leading: const Icon(Icons.flag, color: Colors.orange),
             title: const Text(
-              'Report User',
+              'Report Post',
               style: TextStyle(color: Colors.white),
             ),
             subtitle: const Text(
@@ -167,6 +170,26 @@ class _ReportDialogState extends State<_ReportDialog> {
     super.dispose();
   }
 
+  // Refresh content to hide reported/blocked items
+  Future<void> _refreshContent() async {
+    try {
+      print('Refreshing content after report/block...');
+
+      // Add a small delay to ensure Firebase write is complete
+      await Future.delayed(Duration(milliseconds: 500));
+
+      // Refresh both pin and tapu providers
+      await Future.wait([
+        context.read<PinProvider>().refreshHiddenContent(),
+        context.read<TapuProvider>().refreshHiddenContent(),
+      ]);
+
+      print('Content refresh completed successfully');
+    } catch (e) {
+      print('Error refreshing content: $e');
+    }
+  }
+
   Future<void> _submitReport() async {
     if (selectedReason == null) return;
 
@@ -204,6 +227,9 @@ class _ReportDialogState extends State<_ReportDialog> {
       Navigator.pop(context); // Close report dialog
 
       if (success) {
+        // Refresh content to hide the reported item
+        await _refreshContent();
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Report submitted successfully'),
@@ -340,6 +366,26 @@ class _BlockDialog extends StatefulWidget {
 class _BlockDialogState extends State<_BlockDialog> {
   bool _isLoading = false;
 
+  // Refresh content to hide blocked user's content
+  Future<void> _refreshContent() async {
+    try {
+      print('Refreshing content after block...');
+
+      // Add a small delay to ensure Firebase write is complete
+      await Future.delayed(Duration(milliseconds: 500));
+
+      // Refresh both pin and tapu providers
+      await Future.wait([
+        context.read<PinProvider>().refreshHiddenContent(),
+        context.read<TapuProvider>().refreshHiddenContent(),
+      ]);
+
+      print('Content refresh completed successfully');
+    } catch (e) {
+      print('Error refreshing content: $e');
+    }
+  }
+
   Future<void> _submitBlock() async {
     setState(() {
       _isLoading = true;
@@ -356,6 +402,9 @@ class _BlockDialogState extends State<_BlockDialog> {
       Navigator.pop(context); // Close main dialog
 
       if (success) {
+        // Refresh content to hide all content from blocked user
+        await _refreshContent();
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${widget.reportedUserName} has been blocked'),

@@ -47,28 +47,28 @@ class _MapViewScreenState extends State<MapViewScreen> {
   void _loadTapus() async {
     final tapuProvider = Provider.of<TapuProvider>(context, listen: false);
     if (!tapuProvider.isInitialized) {
-      print('First time loading tapus...');
+      print('MapViewScreen - Initializing TapuProvider for first time...');
       await tapuProvider.initialize(); // Wait for initialization to complete
-      setState(() {
-        _isFirstLoad = false;
-      });
-      print('Tapus loaded successfully');
-
-      // Refresh the map widget to show the loaded tapus
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _mapKey.currentState?.refreshTapus();
-      });
+      print('MapViewScreen - TapuProvider initialization completed');
     } else {
-      print('Tapus already initialized, using cached data');
-      setState(() {
-        _isFirstLoad = false;
-      });
-
-      // Refresh the map widget to show the cached tapus
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _mapKey.currentState?.refreshTapus();
-      });
+      // If already initialized, check if hidden content needs refresh
+      print(
+          'MapViewScreen - TapuProvider already initialized, checking hidden content...');
+      if (!tapuProvider.isHiddenContentStable) {
+        print('MapViewScreen - Hidden content not stable, refreshing...');
+        await tapuProvider.forceRefreshHiddenContent();
+        print('MapViewScreen - Hidden content refreshed');
+      }
     }
+
+    setState(() {
+      _isFirstLoad = false;
+    });
+
+    // Refresh the map widget to show the loaded tapus
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _mapKey.currentState?.refreshTapus();
+    });
   }
 
   // Method to refresh tapus manually
@@ -353,23 +353,21 @@ class _MapViewScreenState extends State<MapViewScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-
                       GestureDetector(
-                    onTap: () {
-                      NavigationService.pushNamed('/home');
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Color(0xFF253743),
-                        borderRadius: BorderRadius.circular(8),
+                        onTap: () {
+                          NavigationService.pushNamed('/home');
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Color(0xFF253743),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.arrow_back_ios_new,
+                              color: Colors.white, size: 20),
+                        ),
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new,
-                          color: Colors.white, size: 20),
-                    ),
-                  ),
-
-                  SizedBox(width: 12),
+                      SizedBox(width: 12),
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -501,8 +499,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
                       ),
                       heroTag: 'stack_fab',
                       onPressed: () {
-                        // NavigationService.pushNamed('/tapu-detail');
-                        // TODO: Navigate to Saved Pins Screen
+                        NavigationService.pushNamed('/home');
                       },
                       backgroundColor: Color(0xFFF5BF4D),
                       child: Image.network(Images.layersImg2),
@@ -553,9 +550,12 @@ class _MapViewScreenState extends State<MapViewScreen> {
 
                                   if (tapus.isEmpty) {
                                     return Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 24,).copyWith(top: 30),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                      ).copyWith(top: 30),
                                       child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Text(
                                             'No Tapu\'s/Pins found nearby',
