@@ -32,6 +32,18 @@ class _PinDetailScreenState extends State<PinDetailScreen> {
   @override
   void initState() {
     super.initState();
+    // Debug logging for audio data
+    print('=== PIN DETAIL SCREEN DEBUG ===');
+    print('Pin title: ${widget.pinDetail.title}');
+    print('Audio items count: ${widget.pinDetail.audios.length}');
+    print(
+        'Audio URLs: ${widget.pinDetail.audios.map((a) => a.audioUrl).toList()}');
+    print(
+        'Audio URLs with content: ${widget.pinDetail.audios.where((a) => a.audioUrl.isNotEmpty && a.audioUrl != 'null').map((a) => a.audioUrl).toList()}');
+    print(
+        'Will show audio section: ${widget.pinDetail.audios.any((audio) => audio.audioUrl.isNotEmpty && audio.audioUrl != 'null')}');
+    print('================================');
+
     // Check if pin is already saved
     _checkIfPinIsSaved();
     _incrementPinViews();
@@ -177,26 +189,43 @@ class _PinDetailScreenState extends State<PinDetailScreen> {
               const SizedBox(height: 16),
 
               // --- Audios Section ---
-              Text(
-                textAlign: TextAlign.left,
-                'Audios',
-                style: text18W700White(context),
-              ),
-              const SizedBox(height: 15),
-              ListView.separated(
-                separatorBuilder: (context, index) => SizedBox(height: 16),
-                shrinkWrap: true, // Important for nested list views
-                physics:
-                    NeverScrollableScrollPhysics(), // Disable scrolling of inner list
-                itemCount: widget.pinDetail.audios.length,
-                itemBuilder: (context, index) {
-                  final audio = widget.pinDetail.audios[index];
-                  return AudioListItem(
-                    audio: audio,
-                    onPlayIncrement: _incrementPinPlays,
-                  );
-                },
-              ),
+              // Debug logging to see what's in the audios list
+              if (widget.pinDetail.audios.isNotEmpty) ...[
+                // Additional check: only show if there are actual audio URLs
+                if (widget.pinDetail.audios.any((audio) =>
+                    audio.audioUrl.isNotEmpty && audio.audioUrl != 'null')) ...[
+                  Text(
+                    textAlign: TextAlign.left,
+                    'Audios',
+                    style: text18W700White(context),
+                  ),
+                  const SizedBox(height: 15),
+                  ListView.separated(
+                    separatorBuilder: (context, index) => SizedBox(height: 16),
+                    shrinkWrap: true, // Important for nested list views
+                    physics:
+                        NeverScrollableScrollPhysics(), // Disable scrolling of inner list
+                    itemCount: widget.pinDetail.audios
+                        .where((audio) =>
+                            audio.audioUrl.isNotEmpty &&
+                            audio.audioUrl != 'null')
+                        .length,
+                    itemBuilder: (context, index) {
+                      final validAudios = widget.pinDetail.audios
+                          .where((audio) =>
+                              audio.audioUrl.isNotEmpty &&
+                              audio.audioUrl != 'null')
+                          .toList();
+                      final audio = validAudios[index];
+                      return AudioListItem(
+                        audio: audio,
+                        onPlayIncrement: _incrementPinPlays,
+                      );
+                    },
+                  ),
+                ],
+              ],
+
               const SizedBox(height: 30),
 
               // --- Photos Section ---

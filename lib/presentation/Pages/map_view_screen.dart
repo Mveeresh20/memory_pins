@@ -185,6 +185,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
               ),
               totalPins: tapu.totalPins,
               emojis: tapu.photoUrls, // Pass the emojis
+              userId: tapu.userId, // Pass the creator's userId
             ),
           ),
         ),
@@ -617,7 +618,7 @@ class _MapViewScreenState extends State<MapViewScreen> {
           }),
           _buildCentralActionButton(() {
             print('Central Action Button tapped (Tapus/Main)');
-            NavigationService.pushNamed('/tapu-pins');
+            NavigationService.pushReplacementNamed('/home');
           }),
           _buildBottomNavItem('New Pin', Images.newPinImg, () {
             NavigationService.pushNamed('/create-pin');

@@ -16,6 +16,7 @@ class Tapu {
   final int plays;
   final int imageCount; // Add image count field
   final int audioCount; // Add audio count field
+  final String? userId; // User ID who created this Tapu
 
   Tapu({
     required this.id,
@@ -33,6 +34,7 @@ class Tapu {
     this.plays = 0,
     this.imageCount = 0, // Default to 0
     this.audioCount = 0, // Default to 0
+    this.userId, // Optional user ID
   });
 
   factory Tapu.fromTapus(Tapus tapus) {
@@ -52,6 +54,7 @@ class Tapu {
       plays: 0,
       imageCount: 0, // Will be calculated from pins
       audioCount: 0, // Will be calculated from pins
+      userId: tapus.userId, // Pass the creator's userId
     );
   }
 
@@ -74,6 +77,7 @@ class Tapu {
       plays: map['plays'] ?? 0,
       imageCount: map['imageCount'] ?? 0, // Add image count from map
       audioCount: map['audioCount'] ?? 0, // Add audio count from map
+      userId: map['userId'] as String?, // Add userId from map
     );
   }
 }

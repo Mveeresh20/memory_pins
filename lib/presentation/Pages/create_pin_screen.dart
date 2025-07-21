@@ -658,6 +658,10 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
       _showSnackBar('Please add at least one photo.');
       return;
     }
+    if (_messageController.text.isEmpty) {
+      _showSnackBar('Please enter a message....');
+      return;
+    }
 
     setState(() {
       _isLoading = true;

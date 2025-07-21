@@ -3,6 +3,7 @@ import 'package:memory_pins_app/models/tapu_pins_item.dart';
 import 'package:memory_pins_app/models/tapus.dart';
 import 'package:memory_pins_app/models/pin.dart';
 import 'package:memory_pins_app/presentation/Widgets/tapu_pins_card.dart';
+import 'package:memory_pins_app/presentation/Pages/tapu_detail_screen.dart';
 import 'package:memory_pins_app/providers/tapu_provider.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
@@ -124,7 +125,14 @@ class _TapuPinsState extends State<TapuPins> {
                         padding: const EdgeInsets.all(10.0),
                         child: GestureDetector(
                           onTap: () {
-                            NavigationService.pushNamed('/tapu-detail');
+                            // Navigate to Tapu detail screen with the current Tapu
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    TapuDetailScreen(tapu: widget.tapus),
+                              ),
+                            );
                           },
                           child: Icon(Icons.map, color: Colors.white),
                         ),

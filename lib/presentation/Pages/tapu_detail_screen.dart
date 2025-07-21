@@ -41,6 +41,8 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
   @override
   void initState() {
     super.initState();
+    print('TapuDetailScreen initialized with Tapu: ${widget.tapu.name}');
+    print('Tapu userId: ${widget.tapu.userId}');
     _loadNearbyPins();
     _loadCreatorUsername();
   }
@@ -127,16 +129,34 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
     return tapuProvider.getPinDistanceFromTapu(widget.tapu, pin);
   }
 
-  // Load current user's usernameP
+  // Load Tapu creator's username
   Future<void> _loadCreatorUsername() async {
     try {
       final authService = AuthService();
-      final username = await authService.getCurrentUserUsername();
-      setState(() {
-        _creatorUsername = username ?? 'Unknown User';
-      });
+
+      // Get the creator's userId from the Tapu
+      final creatorUserId = widget.tapu.userId;
+
+      print('Loading creator username for Tapu: ${widget.tapu.name}');
+      print('Creator userId: $creatorUserId');
+
+      if (creatorUserId != null) {
+        // Fetch the creator's username using their userId
+        final username = await authService.getUsernameByUserId(creatorUserId);
+        print('Found creator username: $username');
+        setState(() {
+          _creatorUsername = username ?? 'Unknown User';
+        });
+      } else {
+        // Fallback to current user if no creator userId is available
+        print('No creator userId found, using current user as fallback');
+        final username = await authService.getCurrentUserUsername();
+        setState(() {
+          _creatorUsername = username ?? 'Unknown User';
+        });
+      }
     } catch (e) {
-      print('Error loading current user username: $e');
+      print('Error loading creator username: $e');
       setState(() {
         _creatorUsername = 'Unknown User';
       });

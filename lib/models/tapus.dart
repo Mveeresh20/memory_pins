@@ -12,6 +12,7 @@ class Tapus {
   final int totalPins; // Total number of associated attachments
   final List<String> emojis; // Selected emojis from Create Tapu Screen
   final String location; // Location name (e.g., "New York, NY")
+  final String? userId; // User ID who created this Tapu
 
   Tapus({
     required this.id,
@@ -22,6 +23,7 @@ class Tapus {
     required this.totalPins,
     this.emojis = const [], // Default to empty list
     this.location = '', // Default to empty string
+    this.userId, // Optional user ID
   });
 
   factory Tapus.fromJson(Map<String, dynamic> json) {
@@ -34,6 +36,7 @@ class Tapus {
       totalPins: json['totalPins'] as int,
       emojis: List<String>.from(json['emojis'] ?? []),
       location: json['location'] as String,
+      userId: json['userId'] as String?, // Add userId from JSON
     );
   }
 
@@ -46,5 +49,6 @@ class Tapus {
         'totalPins': totalPins,
         'emojis': emojis,
         'location': location,
+        'userId': userId, // Include userId in JSON
       };
 }

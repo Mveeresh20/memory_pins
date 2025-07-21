@@ -335,6 +335,7 @@ class TapuProvider with ChangeNotifier {
                   statistics.imageCount, // Add image count from statistics
               audioCount:
                   statistics.audioCount, // Add audio count from statistics
+              userId: tapus.userId, // Pass the creator's userId
             );
 
             print('  Enhanced Tapu photoUrls: ${enhancedTapu.photoUrls}');

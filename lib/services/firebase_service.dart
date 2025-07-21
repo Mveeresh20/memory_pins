@@ -486,6 +486,7 @@ class FirebaseService {
         ),
         totalPins: tapuData['totalPins'] ?? 0,
         location: tapuData['location'] ?? '', // Add location field
+        userId: tapuData['userId'] as String?, // Add userId field
       );
     } catch (e) {
       throw Exception('Failed to get tapu: $e');
@@ -526,6 +527,7 @@ class FirebaseService {
           emojis:
               List<String>.from(tapuData['emojis'] ?? []), // Retrieve emojis
           location: tapuData['location'] ?? '', // Retrieve location name
+          userId: tapuData['userId'] as String?, // Add userId field
         );
 
         print('Created Tapus object:');

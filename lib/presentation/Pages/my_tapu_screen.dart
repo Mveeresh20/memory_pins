@@ -9,6 +9,7 @@ import 'package:memory_pins_app/presentation/Pages/create_tapu_screen.dart';
 import 'package:memory_pins_app/presentation/Pages/tapu_detail_screen.dart';
 import 'package:memory_pins_app/presentation/Widgets/home_tapu_card.dart';
 import 'package:memory_pins_app/providers/tapu_provider.dart';
+import 'package:memory_pins_app/services/navigation_service.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/label_text_style.dart';
@@ -190,33 +191,38 @@ class _MyTapusScreenState extends State<MyTapusScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Color(0xFF253743),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.arrow_back_ios_new,
-                          color: Colors.white, size: 20),
-                    ),
-                  ),
+                          onTap: () {
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Color(0xFF253743),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.arrow_back_ios_new,
+                                color: Colors.white, size: 20),
+                          ),
+                        ),
                         Text(
                           "My Tapus",
                           style: text18W700White(context),
                         ),
-                        Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: Color(0xFF253743),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10.0),
-                            child: Image.network(
-                              Images.addTapuImg,
-                              fit: BoxFit.contain,
+                        GestureDetector(
+                          onTap: () {
+                            NavigationService.pushReplacementNamed('/my-pins');
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              color: Color(0xFF253743),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(10.0),
+                              child: Image.network(
+                                Images.addTapuImg,
+                                fit: BoxFit.contain,
+                              ),
                             ),
                           ),
                         ),
@@ -267,6 +273,8 @@ class _MyTapusScreenState extends State<MyTapusScreen> {
                                       emojis: cardData.emojis,
                                       location: cardData
                                           .locationName, // Include location
+                                      userId:
+                                          'unknown_user_id', // Add fallback creator userId
                                     ),
                                   );
 
@@ -400,6 +408,8 @@ class _MyTapusScreenState extends State<MyTapusScreen> {
                                   ),
                                   totalPins: cardData.pinCount,
                                   emojis: cardData.emojis,
+                                  userId:
+                                      'unknown_user_id', // Add fallback creator userId
                                 ),
                               );
 
@@ -434,6 +444,7 @@ class _MyTapusScreenState extends State<MyTapusScreen> {
               _buildBottomNavItem('My Pins', Images.myPinsImg, () {}),
               _buildCentralActionButton(() {
                 print('Central Action Button tapped (Tapus/Main)');
+                NavigationService.pushReplacementNamed('/home');
               }),
               _buildBottomNavItem('New Pin', Images.newPinImg, () {
                 Navigator.push(

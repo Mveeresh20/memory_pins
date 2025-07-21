@@ -375,7 +375,7 @@ class _MyPinsScreenState extends State<MyPinsScreen> {
             _buildBottomNavItem('My Pins', Images.myPinsImg, () {}),
             _buildCentralActionButton(() {
               print('Central Action Button tapped (Tapus/Main)');
-              NavigationService.pushNamed('/tapu-pins');
+              NavigationService.pushReplacementNamed('/home');
             }),
             _buildBottomNavItem('New Pin', Images.newPinImg, () {
               Navigator.push(

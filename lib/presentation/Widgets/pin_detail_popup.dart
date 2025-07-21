@@ -207,25 +207,40 @@ class _PinDetailPopupState extends State<PinDetailPopup> {
                     SizedBox(height: 16),
 
                     // Audios Section
-                    Text(
-                      'Audios',
-                      style: text18W700White(context),
-                    ),
-                    SizedBox(height: 15),
-                    ListView.separated(
-                      separatorBuilder: (context, index) =>
-                          SizedBox(height: 16),
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      itemCount: widget.pinDetail.audios.length,
-                      itemBuilder: (context, index) {
-                        final audio = widget.pinDetail.audios[index];
-                        return AudioListItem(
-                          audio: audio,
-                          onPlayIncrement: _incrementPinPlays,
-                        );
-                      },
-                    ),
+                    if (widget.pinDetail.audios.isNotEmpty) ...[
+                      if (widget.pinDetail.audios.any((audio) =>
+                          audio.audioUrl.isNotEmpty &&
+                          audio.audioUrl != 'null')) ...[
+                        Text(
+                          'Audios',
+                          style: text18W700White(context),
+                        ),
+                        SizedBox(height: 15),
+                        ListView.separated(
+                          separatorBuilder: (context, index) =>
+                              SizedBox(height: 16),
+                          shrinkWrap: true,
+                          physics: NeverScrollableScrollPhysics(),
+                          itemCount: widget.pinDetail.audios
+                              .where((audio) =>
+                                  audio.audioUrl.isNotEmpty &&
+                                  audio.audioUrl != 'null')
+                              .length,
+                          itemBuilder: (context, index) {
+                            final validAudios = widget.pinDetail.audios
+                                .where((audio) =>
+                                    audio.audioUrl.isNotEmpty &&
+                                    audio.audioUrl != 'null')
+                                .toList();
+                            final audio = validAudios[index];
+                            return AudioListItem(
+                              audio: audio,
+                              onPlayIncrement: _incrementPinPlays,
+                            );
+                          },
+                        ),
+                      ],
+                    ],
                     SizedBox(height: 30),
 
                     // Photos Section

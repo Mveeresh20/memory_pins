@@ -91,6 +91,7 @@ class MyApp extends StatelessWidget {
           longitude:
               0.0), // Keep 0,0 if the detail map is relative to center. The attachment coords will spread out.
       totalPins: 4, // Matches the screenshot's "4 Pins"
+      userId: 'john_user_id', // Add dummy creator userId
     );
 
     final dummyPinDetail = PinDetail(
@@ -156,6 +157,7 @@ class MyApp extends StatelessWidget {
                     MapCoordinates(latitude: 0.0, longitude: 0.0),
                 totalPins: 0,
                 location: 'Unknown Location',
+                userId: 'unknown_user_id', // Add fallback creator userId
               );
               return TapuPins(tapus: fallbackTapus);
             }

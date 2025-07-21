@@ -21,23 +21,40 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage> {
   bool _isLoading = false;
+   bool _acceptedTerms = false;
   final AuthService _authService = AuthService();
   final AppIntegrationService _appService = AppIntegrationService();
 
+  // void _handleSignUp() async {
+  //   if (_formKey.currentState?.validate() ?? false) {
+  //     // Show EULA dialog on every sign-up attempt
+  //     showEulaAgreementDialog(
+  //       context,
+  //       withButtons: true,
+  //       onAgreed: (value) {
+  //         markEualStatusInLocal(agree: value);
+  //         if (value) {
+  //           // Proceed with sign up after EULA agreement
+  //           _performSignUp();
+  //         }
+  //       },
+  //     );
+  //   }
+  // }
+
   void _handleSignUp() async {
     if (_formKey.currentState?.validate() ?? false) {
-      // Show EULA dialog on every sign-up attempt
-      showEulaAgreementDialog(
-        context,
-        withButtons: true,
-        onAgreed: (value) {
-          markEualStatusInLocal(agree: value);
-          if (value) {
-            // Proceed with sign up after EULA agreement
-            _performSignUp();
-          }
-        },
-      );
+      if (!_acceptedTerms) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Please accept the Terms and Conditions"),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      // Proceed with sign up directly without EULA dialog
+      _performSignUp();
     }
   }
 
@@ -467,6 +484,60 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ),
               SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: _acceptedTerms,
+                      onChanged: (value) {
+                        setState(() {
+                          _acceptedTerms = value ?? false;
+                        });
+                      },
+                      activeColor: Color(0xFFEBA145),
+                      checkColor: Colors.white,
+                    ),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Text(
+                            "I agree to the ",
+                            style: GoogleFonts.nunitoSans(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              // Show EULA dialog for reading purposes
+                              showEulaAgreementDialog(
+                                context,
+                                withButtons: false, // Read-only mode
+                                onAgreed: (value) {
+                                  // No action needed for read-only mode
+                                },
+                              );
+                            },
+                            child: Text(
+                              "Terms and Conditions",
+                              style: GoogleFonts.nunitoSans(
+                                color: Color(0xFFEBA145),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+
 
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),

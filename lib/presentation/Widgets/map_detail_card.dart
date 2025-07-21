@@ -42,6 +42,7 @@ class MapDetailCard extends StatelessWidget {
       ),
       totalPins: tapu.totalPins,
       emojis: tapu.photoUrls, // Pass the emojis
+      userId: tapu.userId, // Pass the creator's userId
     );
 
     Navigator.push(

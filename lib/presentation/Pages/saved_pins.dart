@@ -197,7 +197,7 @@ class _SavedPinsState extends State<SavedPins> {
             }),
             _buildCentralActionButton(() {
               print('Central Action Button tapped (Tapus/Main)');
-              NavigationService.pushNamed('/home');
+              NavigationService.pushReplacementNamed('/home');
             }),
             _buildBottomNavItem('New Pin', Images.newPinImg, () {
               NavigationService.pushNamed('/create-pin');

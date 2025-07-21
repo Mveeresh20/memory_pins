@@ -838,7 +838,6 @@ class _HomeScreenState extends State<HomeScreen> {
           }),
           _buildCentralActionButton(() {
             print('Central Action Button tapped (Tapus/Main)');
-            NavigationService.pushNamed('/tapu-pins');
           }),
           _buildBottomNavItem('New Pin', Images.newPinImg, () {
             NavigationService.pushNamed('/create-pin');
