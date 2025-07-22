@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:memory_pins_app/models/pin.dart';
 import 'package:memory_pins_app/services/location_service.dart';
 import 'package:http/http.dart' as http;
+import 'package:memory_pins_app/utills/Constants/image_picker_util.dart'; // Add this import
 
 class HomeMapWidget extends StatefulWidget {
   final List<Pin> pins;
@@ -40,6 +41,13 @@ class HomeMapWidgetState extends State<HomeMapWidget> {
   Position? _currentPosition;
   Set<Marker> _markers = {};
   bool _isMapReady = false;
+
+  // Helper method to convert image filename to full URL
+  String _getImageUrl(String filename) {
+    final imagePickerUtil = ImagePickerUtil();
+    // Use the filename as-is (Firebase stores full path, AWS also stores with "images/" prefix)
+    return imagePickerUtil.getUrlForUserUploadedImage(filename);
+  }
 
   // Improved caching system
   Map<String, BitmapDescriptor> _customMarkers = {};
@@ -336,8 +344,10 @@ class HomeMapWidgetState extends State<HomeMapWidget> {
 
       // Try to load and draw the pin image
       try {
-        if (pin.imageUrl.isNotEmpty && pin.imageUrl.startsWith('http')) {
-          final response = await http.get(Uri.parse(pin.imageUrl)).timeout(
+        if (pin.imageUrl.isNotEmpty) {
+          // Convert filename to full URL
+          final fullImageUrl = _getImageUrl(pin.imageUrl);
+          final response = await http.get(Uri.parse(fullImageUrl)).timeout(
                 const Duration(seconds: 5),
                 onTimeout: () => throw Exception('Image request timed out'),
               );

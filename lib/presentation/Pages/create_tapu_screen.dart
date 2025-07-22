@@ -624,6 +624,7 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
 
       // Create tapu with media uploads using integration service
       final success = await _appService.createTapuWithMedia(
+      
         context: context,
         title: title,
         description: message,

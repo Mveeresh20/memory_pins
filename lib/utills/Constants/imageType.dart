@@ -7,4 +7,5 @@ enum ImageType {
   racer,
   sponsor,
   generic,
+  pin_images,
 }

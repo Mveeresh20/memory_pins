@@ -16,6 +16,9 @@ import 'package:provider/provider.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/models/pin.dart';
+import 'package:memory_pins_app/utills/Constants/image_picker_util.dart';
+import 'package:memory_pins_app/utills/Constants/imageType.dart';
+import 'package:memory_pins_app/services/media_service.dart';
 
 // --- Import new packages ---
 import 'package:geolocator/geolocator.dart'; // For location
@@ -51,6 +54,8 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
 
   // App integration service
   final AppIntegrationService _appService = AppIntegrationService();
+  final ImagePickerUtil _imagePickerUtil = ImagePickerUtil();
+  final MediaService _mediaService = MediaService();
 
   // Form controllers
   final _nameController = TextEditingController();
@@ -96,6 +101,7 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
   // --- State Variables ---
   String? _selectedMoodIconUrl;
   List<File> _selectedImageFiles = []; // Changed to File for actual images
+  List<String> _uploadedImageFilenames = []; // Store uploaded image filenames
   List<File> _recordedAudioFiles = []; // List to store recorded audio files
   String? _recordedAudioFilePath; // Actual path to recorded audio file
 
@@ -607,17 +613,35 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
   // --- Image Picking Functions ---
   Future<void> _addPhoto() async {
     try {
-      final ImagePicker picker = ImagePicker();
-      final List<XFile>? images = await picker.pickMultiImage();
+      // Show loading indicator
+      setState(() {
+        _isLoading = true;
+      });
 
-      if (images != null && images.isNotEmpty) {
-        setState(() {
-          _selectedImageFiles.addAll(
-            images.map((xFile) => File(xFile.path)).toList(),
-          );
-        });
-      }
+      // Use the image picker to select and upload image
+      _imagePickerUtil.showImageSourceSelection(
+        context,
+        (String imageFilename) async {
+          // Success callback - imageFilename is just the filename, not full URL
+          setState(() {
+            _uploadedImageFilenames.add(imageFilename);
+            _isLoading = false;
+          });
+          _showSnackBar('Image uploaded successfully!');
+        },
+        (String error) {
+          // Error callback
+          setState(() {
+            _isLoading = false;
+          });
+          _showSnackBar('Failed to upload image: $error');
+        },
+        imageType: ImageType.pin_images,
+      );
     } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
       print('Error picking images: $e');
       _showSnackBar('Failed to pick images.');
     }
@@ -625,7 +649,7 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
 
   void _removePhoto(int index) {
     setState(() {
-      _selectedImageFiles.removeAt(index);
+      _uploadedImageFilenames.removeAt(index);
     });
   }
 
@@ -654,7 +678,7 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
       _showSnackBar('Please wait for location to be fetched or try again.');
       return;
     }
-    if (_selectedImageFiles.isEmpty) {
+    if (_uploadedImageFilenames.isEmpty) {
       _showSnackBar('Please add at least one photo.');
       return;
     }
@@ -678,9 +702,10 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
       }
 
       print('=== POST PIN DEBUG ===');
+      print(
+          'Creating pin with ${_uploadedImageFilenames.length} image filenames');
+      print('Image filenames: $_uploadedImageFilenames');
       print('Creating pin with ${audioFiles.length} audio files');
-      print('_recordedAudioFiles count: ${_recordedAudioFiles.length}');
-      print('_recordedAudioPath: $_recordedAudioPath');
 
       for (int i = 0; i < audioFiles.length; i++) {
         final file = audioFiles[i];
@@ -690,14 +715,26 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
             '  - Size: ${file.existsSync() ? file.lengthSync() : 'N/A'} bytes');
       }
 
-      // Create pin with media uploads using integration service
-      final success = await _appService.createPinWithMedia(
-        context: context,
+      // Create pin with image filenames and audio files
+      final pinProvider = context.read<PinProvider>();
+
+      // Upload audios to AWS
+      print('Uploading ${audioFiles.length} audios...');
+      final audioUrls = await _mediaService.uploadAudiosDirectly(audioFiles);
+      print('Audio uploads completed: ${audioUrls.length} URLs');
+
+      print(
+          'Creating pin with ${_uploadedImageFilenames.length} image filenames:');
+      print('Image filenames: $_uploadedImageFilenames');
+
+      // Create pin in Firebase with image filenames and audio URLs
+      final success = await pinProvider.createPin(
         title: title,
         description: message,
         mood: _selectedMoodIconUrl!,
-        imageFiles: _selectedImageFiles,
-        audioFiles: audioFiles,
+        photoUrls:
+            _uploadedImageFilenames, // Store filenames only, not full URLs
+        audioUrls: audioUrls,
         latitude: pinLatitude,
         longitude: pinLongitude,
       );
@@ -706,7 +743,6 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
         _showSnackBar('Pin created successfully!');
 
         // Refresh the home screen data before navigating back
-        final pinProvider = Provider.of<PinProvider>(context, listen: false);
         await pinProvider.loadNearbyPins();
         await pinProvider.loadUserPins();
 
@@ -752,24 +788,21 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
                   children: [
-
                     GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Color(0xFF253743),
-                        borderRadius: BorderRadius.circular(8),
+                      onTap: () {
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Color(0xFF253743),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.arrow_back_ios_new,
+                            color: Colors.white, size: 20),
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new,
-                          color: Colors.white, size: 20),
                     ),
-                  ),
-
                     Text(
                       'Create Pin',
                       style: GoogleFonts.nunitoSans(
@@ -953,10 +986,10 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
                   child: ListView(
                     scrollDirection: Axis.horizontal,
                     children: [
-                      // Display selected images
-                      ..._selectedImageFiles.asMap().entries.map((entry) {
+                      // Display uploaded image filenames
+                      ..._uploadedImageFilenames.asMap().entries.map((entry) {
                         int index = entry.key;
-                        File imageFile = entry.value;
+                        String imageFilename = entry.value;
                         return Padding(
                           padding: const EdgeInsets.only(right: 10),
                           child: Stack(
@@ -971,11 +1004,55 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
                                 ),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
-                                  child: Image.file(
-                                    imageFile,
+                                  child: Image.network(
+                                    _imagePickerUtil.getUrlForUserUploadedImage(
+                                        imageFilename),
                                     width: 100,
                                     height: 100,
                                     fit: BoxFit.cover,
+                                    loadingBuilder:
+                                        (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        width: 100,
+                                        height: 100,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[800],
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            value: loadingProgress
+                                                        .expectedTotalBytes !=
+                                                    null
+                                                ? loadingProgress
+                                                        .cumulativeBytesLoaded /
+                                                    loadingProgress
+                                                        .expectedTotalBytes!
+                                                : null,
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: 100,
+                                        height: 100,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[800],
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: const Icon(
+                                          Icons.error,
+                                          color: Colors.white,
+                                          size: 30,
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ),
                               ),
@@ -1005,7 +1082,7 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
                       }),
                       // Add Photo Button
                       GestureDetector(
-                        onTap: _addPhoto,
+                        onTap: _isLoading ? null : _addPhoto,
                         child: DottedBorder(
                           // Correct usage: parameters directly here
                           borderType:
@@ -1017,15 +1094,25 @@ class _CreatePinScreenState extends State<CreatePinScreen> {
                             4
                           ], // This is a direct parameter
                           strokeWidth: 2, // This is a direct parameter
-                          color: Colors.white, // This is a direct parameter
+                          color: _isLoading
+                              ? Colors.grey
+                              : Colors.white, // This is a direct parameter
                           child: Padding(
                             padding: const EdgeInsets.all(34.0),
-                            child: Icon(
-                              Icons.add,
-                              color: Colors.white,
-                              size: 30,
-                              
-                            ),
+                            child: _isLoading
+                                ? SizedBox(
+                                    width: 30,
+                                    height: 30,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Icon(
+                                    Icons.add,
+                                    color: Colors.white,
+                                    size: 30,
+                                  ),
                           ),
                         ),
                       )

@@ -12,6 +12,7 @@ import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/label_text_style.dart';
 import 'package:memory_pins_app/utills/Constants/ui.dart';
+import 'package:memory_pins_app/utills/Constants/image_picker_util.dart'; // Add this import
 import 'package:provider/provider.dart';
 import 'package:memory_pins_app/providers/pin_provider.dart';
 
@@ -25,15 +26,24 @@ class PinCard extends StatelessWidget {
     this.originalPin, // Make it optional for backward compatibility
   }) : super(key: key);
 
+  // Helper method to convert image filename to full URL
+  String _getImageUrl(String filename) {
+    final imagePickerUtil = ImagePickerUtil();
+    // Use the filename as-is (Firebase stores full path, AWS also stores with "images/" prefix)
+    return imagePickerUtil.getUrlForUserUploadedImage(filename);
+  }
+
   // Convert Pin to PinDetail for navigation (same as SavedPinCard)
   PinDetail _convertPinToPinDetail(Pin pin) {
     print('Converting pin: ${pin.title}');
     print('Pin has description: ${pin.description}');
     print('Pin has ${pin.audioUrls.length} audio URLs');
 
-    // Convert image URLs to PhotoItem list
-    List<PhotoItem> photos =
-        pin.imageUrls.map((url) => PhotoItem(imageUrl: url)).toList();
+    // Convert image filenames to full URLs for PhotoItem list
+    List<PhotoItem> photos = pin.imageUrls.map((filename) {
+      final fullUrl = _getImageUrl(filename);
+      return PhotoItem(imageUrl: fullUrl);
+    }).toList();
 
     // Convert audio URLs to AudioItem list
     List<AudioItem> audios = [];
@@ -291,7 +301,9 @@ class PinCard extends StatelessWidget {
               children: [
                 ...pin.imageUrls.asMap().entries.take(4).map((entry) {
                   final idx = entry.key;
-                  final url = entry.value;
+                  final filename = entry.value;
+                  final fullUrl =
+                      _getImageUrl(filename); // Convert filename to full URL
                   // If this is the 4th image and there are more images, overlay the number
                   if (idx == 3 && pin.imageUrls.length > 4) {
                     double imageSize = MediaQuery.of(context).size.width * 0.18;
@@ -306,7 +318,7 @@ class PinCard extends StatelessWidget {
                         child: Stack(
                           children: [
                             Image.network(
-                              url,
+                              fullUrl,
                               height: imageSize,
                               width: imageSize,
                               fit: BoxFit.cover,
@@ -369,7 +381,7 @@ class PinCard extends StatelessWidget {
                       ),
                     );
                   } else {
-                    return _buildPreviewImage(url, context);
+                    return _buildPreviewImage(fullUrl, context);
                   }
                 }).toList(),
               ],

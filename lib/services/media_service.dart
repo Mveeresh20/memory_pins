@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:memory_pins_app/utills/Constants/image_picker_util.dart';
 import 'package:memory_pins_app/utills/Constants/audio_picker_util.dart';
+import 'package:memory_pins_app/utills/Constants/imageType.dart';
 import 'package:memory_pins_app/services/aws_service.dart';
 
 class MediaService {
@@ -59,6 +60,54 @@ class MediaService {
     return uploadedUrl;
   }
 
+  /// Pick and upload multiple pin images (returns filenames, not URLs)
+  Future<List<String>> pickAndUploadPinImages(BuildContext context) async {
+    final List<String> uploadedFilenames = [];
+
+    _imagePickerUtil.showImageSourceSelection(
+      context,
+      (String fileName) async {
+        // Success callback - fileName is already just the filename
+        try {
+          uploadedFilenames.add(fileName);
+        } catch (e) {
+          print('Error uploading pin image: $e');
+        }
+      },
+      (String error) {
+        // Failure callback
+        print('Pin image upload failed: $error');
+      },
+      imageType: ImageType.pin_images,
+    );
+
+    return uploadedFilenames;
+  }
+
+  /// Pick and upload single pin image (returns filename, not URL)
+  Future<String?> pickAndUploadSinglePinImage(BuildContext context) async {
+    String? uploadedFilename;
+
+    _imagePickerUtil.showImageSourceSelection(
+      context,
+      (String fileName) async {
+        // Success callback - fileName is already just the filename
+        try {
+          uploadedFilename = fileName;
+        } catch (e) {
+          print('Error uploading pin image: $e');
+        }
+      },
+      (String error) {
+        // Failure callback
+        print('Pin image upload failed: $error');
+      },
+      imageType: ImageType.pin_images,
+    );
+
+    return uploadedFilename;
+  }
+
   /// Record and upload audio
   Future<String?> recordAndUploadAudio(BuildContext context) async {
     String? uploadedUrl;
@@ -110,9 +159,19 @@ class MediaService {
     return await _awsService.uploadAudios(audioFiles);
   }
 
+  /// Upload multiple pin images using AWS service directly (returns filenames)
+  Future<List<String>> uploadPinImagesDirectly(List<File> imageFiles) async {
+    return await _awsService.uploadPinImages(imageFiles);
+  }
+
   /// Upload single image using AWS service directly
   Future<String> uploadImageDirectly(File imageFile) async {
     return await _awsService.uploadImage(imageFile);
+  }
+
+  /// Upload single pin image using AWS service directly (returns filename)
+  Future<String> uploadPinImageDirectly(File imageFile) async {
+    return await _awsService.uploadPinImage(imageFile);
   }
 
   /// Upload single audio using AWS service directly
@@ -130,4 +189,3 @@ class MediaService {
     return _audioPickerUtil.getUrlForUploadedAudio(audioName);
   }
 }
- 

@@ -7,15 +7,15 @@ import 'package:image_picker/image_picker.dart';
 import 'package:memory_pins_app/aws/aws_fields.dart' as AppConstant;
 import 'package:memory_pins_app/aws/image_compresion.dart';
 import 'package:memory_pins_app/utills/Constants/imageType.dart';
+import 'package:memory_pins_app/services/aws_service.dart';
 
 import 'package:path/path.dart'; // For extracting the file name
 import 'package:http/http.dart' as http;
 
-
-
 class ImagePickerUtil {
   String uploadedFileUrl = '';
   final ImagePicker _picker = ImagePicker();
+  final AWSService _awsService = AWSService();
   String _fileName = '';
   File? file;
 
@@ -24,11 +24,10 @@ class ImagePickerUtil {
   }
 
   void showImageSourceSelection(
-    BuildContext context,
-    Function(String) onUploadSuccess, // Pass callback for success
-    Function(String) onUploadFailure,
-    {ImageType imageType = ImageType.profile}
-  ) {
+      BuildContext context,
+      Function(String) onUploadSuccess, // Pass callback for success
+      Function(String) onUploadFailure,
+      {ImageType imageType = ImageType.profile}) {
     showModalBottomSheet(
       context: context,
       builder: (BuildContext ctx) {
@@ -41,7 +40,7 @@ class ImagePickerUtil {
                 onTap: () {
                   Navigator.of(context).pop(); // Close the bottom sheet
                   _pickImageFromGallery(context, onUploadSuccess,
-                      onUploadFailure); // Pass callbacks
+                      onUploadFailure, imageType); // Pass callbacks
                 },
               ),
               ListTile(
@@ -50,7 +49,7 @@ class ImagePickerUtil {
                 onTap: () {
                   Navigator.of(context).pop(); // Close the bottom sheet
                   _pickImageFromCamera(context, onUploadSuccess,
-                      onUploadFailure); // Pass callbacks
+                      onUploadFailure, imageType); // Pass callbacks
                 },
               ),
             ],
@@ -60,10 +59,12 @@ class ImagePickerUtil {
     );
   }
 
+  /// Function to pick image from gallery
   Future<void> _pickImageFromGallery(
     BuildContext context,
     Function(String) onUploadSuccess, // Callback for success
     Function(String) onUploadFailure, // Callback for failure
+    ImageType imageType, // Add imageType parameter
   ) async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
@@ -75,7 +76,7 @@ class ImagePickerUtil {
         file = await pickAndCompressImage(file!);
         debugPrint("Image compressed: ${file!.path}");
         await _showImagePreviewDialog(
-            context, file!, onUploadSuccess, onUploadFailure);
+            context, file!, onUploadSuccess, onUploadFailure, imageType);
       } catch (e) {
         debugPrint("Error compressing image: $e");
         onUploadFailure("Error compressing image: $e");
@@ -88,6 +89,7 @@ class ImagePickerUtil {
     BuildContext context,
     Function(String) onUploadSuccess, // Callback for success
     Function(String) onUploadFailure, // Callback for failure
+    ImageType imageType, // Add imageType parameter
   ) async {
     final XFile? image = await _picker.pickImage(source: ImageSource.camera);
     if (image != null) {
@@ -99,7 +101,7 @@ class ImagePickerUtil {
         file = await pickAndCompressImage(file!);
         debugPrint("Image compressed: ${file!.path}");
         await _showImagePreviewDialog(
-            context, file!, onUploadSuccess, onUploadFailure);
+            context, file!, onUploadSuccess, onUploadFailure, imageType);
       } catch (e) {
         debugPrint("Error compressing image: $e");
         onUploadFailure("Error compressing image: $e");
@@ -170,8 +172,8 @@ class ImagePickerUtil {
         log("File uploaded response: ${response.body}");
 
         if (response.statusCode == 200) {
+          // Return only the filename, not the full URL
           onUploadSuccess(uploadedFileUrl); // Pass the filename to the callback
-          // onUploadSuccess(_fileName);  // Pass the filename to the callback
         } else {
           onUploadFailure(
               'Failed to upload file: ${response.statusCode}'); // Call failure callback
@@ -198,6 +200,7 @@ class ImagePickerUtil {
     File imageFile,
     Function(String) onUploadSuccess, // Callback for success
     Function(String) onUploadFailure,
+    ImageType imageType, // Add imageType parameter
   ) async {
     bool loading = false;
 
@@ -254,29 +257,33 @@ class ImagePickerUtil {
                           // backgroundColor:  color1,
                           ),
                       onPressed: () async {
-                        String _fileName =
-                            'IMG_Profile_${DateTime.now().millisecondsSinceEpoch}${extension(imageFile.path)}';
                         try {
-                          print("_fileName $_fileName");
-                          if (_fileName.isNotEmpty) {
-                            if (_fileName.isNotEmpty) {
-                              state(() {
-                                loading = true;
-                              });
-                              String? url = await getSignedUrl(
-                                  _fileName, AppConstant.bundleNameForPostAPI);
-                              if (url != null &&
-                                  url.isNotEmpty &&
-                                  file != null) {
-                                uploadFileToS3WithCallback(url, file!.path,
-                                    context, onUploadSuccess, onUploadFailure);
-                                state(() {
-                                  loading = false;
-                                });
-                                Navigator.maybePop(dialogContext);
-                              }
-                            }
+                          state(() {
+                            loading = true;
+                          });
+
+                          String fileName;
+
+                          // Use different AWS service methods based on image type
+                          if (imageType == ImageType.profile) {
+                            // Use profile image upload
+                            fileName =
+                                await _awsService.uploadProfileImage(imageFile);
+                          } else if (imageType == ImageType.pin_images) {
+                            // Use pin image upload
+                            fileName =
+                                await _awsService.uploadPinImage(imageFile);
+                          } else {
+                            // Use generic image upload
+                            fileName = await _awsService.uploadImage(imageFile);
                           }
+
+                          state(() {
+                            loading = false;
+                          });
+
+                          Navigator.maybePop(dialogContext);
+                          onUploadSuccess(fileName); // Pass only the filename
                         } catch (e) {
                           state(() {
                             loading = false;
@@ -352,7 +359,7 @@ class ImagePickerUtilForPst {
       log("Unique File Name: $uniqueFileName");
 
       _fileName = uniqueFileName;
-      log('_fileName  ====> $_fileName');
+
       if (_fileName.isNotEmpty) {
         String? url =
             await getSignedUrl(_fileName, AppConstant.bundleNameForPostAPI);
@@ -362,42 +369,6 @@ class ImagePickerUtilForPst {
         }
       }
     }
-  }
-
-  void showImageSourceSelection(
-    BuildContext context,
-    Function(String) onUploadSuccess, // Pass callback for success
-    Function(String) onUploadFailure, // Pass callback for failure
-  ) {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext ctx) {
-        return SafeArea(
-          child: Wrap(
-            children: <Widget>[
-              ListTile(
-                leading: Icon(Icons.photo_library),
-                title: Text('Gallery'),
-                onTap: () {
-                  Navigator.of(context).pop(); // Close the bottom sheet
-                  _pickImageFromGallery(context, onUploadSuccess,
-                      onUploadFailure); // Pass callbacks
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_camera),
-                title: const Text('Camera'),
-                onTap: () {
-                  Navigator.of(context).pop(); // Close the bottom sheet
-                  _pickImageFromCamera(context, onUploadSuccess,
-                      onUploadFailure); // Pass callbacks
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   // Method to generate the signed URL
@@ -465,9 +436,6 @@ class ImagePickerUtilForPst {
         if (response.statusCode == 200) {
           log('File uploaded successfully!');
           onUploadSuccess(uploadedFileUrl); // Pass the filename to the callback
-          // onUploadSuccess(_fileName);  // Pass the filename to the callback
-
-          // onUploadSuccess(response.body); // Call success callback with response body
         } else {
           log('Failed to upload file: ${response.statusCode} : ${response.body}');
           onUploadFailure(

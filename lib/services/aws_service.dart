@@ -9,6 +9,69 @@ import 'package:memory_pins_app/aws/aws_fields.dart' as AppConstant;
 class AWSService {
   final Uuid _uuid = Uuid();
 
+  /// Upload profile image and return only the filename (not full URL)
+  Future<String> uploadProfileImage(File imageFile) async {
+    try {
+      final fileName =
+          'IMG_Profile_${DateTime.now().millisecondsSinceEpoch}${path.extension(imageFile.path)}';
+
+      // Use existing AWS upload function
+      final uploadedFileName = await AppConstant.uploadImageToAWS(
+        file: imageFile,
+        fileName: fileName,
+      );
+
+      if (uploadedFileName != null) {
+        // Return only the filename, not the full URL
+        return uploadedFileName;
+      } else {
+        throw Exception('Failed to upload profile image');
+      }
+    } catch (e) {
+      throw Exception('Error uploading profile image: $e');
+    }
+  }
+
+  /// Upload pin image and return only the filename (not full URL)
+  Future<String> uploadPinImage(File imageFile) async {
+    try {
+      final fileName =
+          'IMG_Pin_${DateTime.now().millisecondsSinceEpoch}${path.extension(imageFile.path)}';
+
+      // Use existing AWS upload function
+      final uploadedFileName = await AppConstant.uploadImageToAWS(
+        file: imageFile,
+        fileName: fileName,
+      );
+
+      if (uploadedFileName != null) {
+        // Return only the filename, not the full URL
+        return uploadedFileName;
+      } else {
+        throw Exception('Failed to upload pin image');
+      }
+    } catch (e) {
+      throw Exception('Error uploading pin image: $e');
+    }
+  }
+
+  /// Upload multiple pin images and return only filenames (not full URLs)
+  Future<List<String>> uploadPinImages(List<File> imageFiles) async {
+    final List<String> uploadedFilenames = [];
+
+    for (final imageFile in imageFiles) {
+      try {
+        final fileName = await uploadPinImage(imageFile);
+        uploadedFilenames.add(fileName);
+      } catch (e) {
+        print('Failed to upload pin image ${imageFile.path}: $e');
+        // Continue with other images even if one fails
+      }
+    }
+
+    return uploadedFilenames;
+  }
+
   /// Upload image to AWS S3 using existing AWS fields
   Future<String> uploadImage(File imageFile) async {
     try {
