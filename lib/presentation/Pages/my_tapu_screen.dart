@@ -13,6 +13,7 @@ import 'package:memory_pins_app/services/navigation_service.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/label_text_style.dart';
+import 'package:memory_pins_app/utills/Constants/image_picker_util.dart';
 import 'package:provider/provider.dart';
 
 class MyTapusScreen extends StatefulWidget {
@@ -28,6 +29,12 @@ class _MyTapusScreenState extends State<MyTapusScreen> {
   bool _isLoading = true;
   bool _isLoadingDetails = false; // Loading detailed statistics
   String? _error;
+
+  // Helper method to convert image filename to full URL
+  String _getImageUrl(String filename) {
+    final imagePickerUtil = ImagePickerUtil();
+    return imagePickerUtil.getUrlForUserUploadedImage(filename);
+  }
 
   @override
   void initState() {
@@ -130,10 +137,10 @@ class _MyTapusScreenState extends State<MyTapusScreen> {
       locationName: locationName,
       tapuName: tapu.name,
       mainImageUrl: tapu.centerPinImageUrl.isNotEmpty
-          ? tapu.centerPinImageUrl
+          ? _getImageUrl(tapu.centerPinImageUrl)
           : Images.myTapuImg1, // Fallback image
       ownerAvatarUrl: tapu.avatarUrl.isNotEmpty
-          ? tapu.avatarUrl
+          ? _getImageUrl(tapu.avatarUrl)
           : Images.childUmbrella, // Fallback avatar
       emojis: tapu.emojis.isNotEmpty
           ? tapu.emojis

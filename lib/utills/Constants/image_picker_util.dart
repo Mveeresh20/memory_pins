@@ -273,6 +273,10 @@ class ImagePickerUtil {
                             // Use pin image upload
                             fileName =
                                 await _awsService.uploadPinImage(imageFile);
+                          } else if (imageType == ImageType.tapu_images) {
+                            // Use tapu image upload
+                            fileName =
+                                await _awsService.uploadTapuImage(imageFile);
                           } else {
                             // Use generic image upload
                             fileName = await _awsService.uploadImage(imageFile);

@@ -8,8 +8,8 @@ import 'package:memory_pins_app/presentation/Pages/map_view_screen.dart';
 import 'package:memory_pins_app/presentation/Pages/my_pins_screen.dart';
 import 'package:memory_pins_app/presentation/Pages/pin_detail_screen.dart';
 import 'package:memory_pins_app/presentation/Widgets/pin_detail_popup.dart';
-// Correct Google Maps widget with custom UI
-import 'package:memory_pins_app/presentation/Widgets/map_pin_widget.dart';
+// Flutter Map widget with same features as Google Maps
+import 'package:memory_pins_app/presentation/Widgets/flutter_map_pin_widget_simple.dart';
 import 'package:memory_pins_app/services/edit_profile_provider.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
 import 'package:memory_pins_app/services/app_integration_service.dart';
@@ -34,7 +34,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String _selectedFilter = 'Nearby';
   final AppIntegrationService _appService = AppIntegrationService();
-  final GlobalKey<HomeMapWidgetState> _mapKey = GlobalKey<HomeMapWidgetState>();
+  final GlobalKey<FlutterMapPinWidgetSimpleState> _mapKey =
+      GlobalKey<FlutterMapPinWidgetSimpleState>();
   String _currentCity = 'Loading...'; // Add current city state
   final LocationService _locationService =
       LocationService(); // Add location service
@@ -46,11 +47,24 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Load pins when screen initializes
+    // Load pins and profile when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _loadPins(); // Wait for pins to load
+      await _loadUserProfile(); // Load user profile data
       _getCurrentCity(); // Get current city
     });
+  }
+
+  // Load user profile data
+  Future<void> _loadUserProfile() async {
+    try {
+      final profileProvider =
+          Provider.of<EditProfileProvider>(context, listen: false);
+      await profileProvider.fetchUserProfileDetails();
+      print('HomeScreen - User profile loaded successfully');
+    } catch (e) {
+      print('HomeScreen - Error loading user profile: $e');
+    }
   }
 
   Future<void> _loadPins() async {
@@ -377,9 +391,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
             return Stack(
               children: [
-                // --- Google Maps Background ---
+                // --- Flutter Map Background ---
                 Positioned.fill(
-                  child: HomeMapWidget(
+                  child: FlutterMapPinWidgetSimple(
                     key: _mapKey,
                     pins: pins,
                     onPinTap: (selectedPin) {

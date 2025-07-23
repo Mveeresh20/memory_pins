@@ -164,6 +164,11 @@ class MediaService {
     return await _awsService.uploadPinImages(imageFiles);
   }
 
+  /// Upload multiple tapu images using AWS service directly (returns filenames)
+  Future<List<String>> uploadTapuImagesDirectly(List<File> imageFiles) async {
+    return await _awsService.uploadTapuImages(imageFiles);
+  }
+
   /// Upload single image using AWS service directly
   Future<String> uploadImageDirectly(File imageFile) async {
     return await _awsService.uploadImage(imageFile);
@@ -172,6 +177,11 @@ class MediaService {
   /// Upload single pin image using AWS service directly (returns filename)
   Future<String> uploadPinImageDirectly(File imageFile) async {
     return await _awsService.uploadPinImage(imageFile);
+  }
+
+  /// Upload single tapu image using AWS service directly (returns filename)
+  Future<String> uploadTapuImageDirectly(File imageFile) async {
+    return await _awsService.uploadTapuImage(imageFile);
   }
 
   /// Upload single audio using AWS service directly

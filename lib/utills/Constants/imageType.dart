@@ -8,4 +8,5 @@ enum ImageType {
   sponsor,
   generic,
   pin_images,
+  tapu_images,
 }

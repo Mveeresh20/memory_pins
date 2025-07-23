@@ -15,6 +15,8 @@ import 'package:memory_pins_app/services/location_service.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/label_text_style.dart';
+import 'package:memory_pins_app/utills/Constants/image_picker_util.dart';
+import 'package:memory_pins_app/utills/Constants/imageType.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
@@ -93,18 +95,39 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
 
   Future<void> _pickImage() async {
     try {
-      final ImagePicker picker = ImagePicker();
-      final XFile? pickedFile =
-          await picker.pickImage(source: ImageSource.gallery);
+      // Show loading indicator
+      setState(() {
+        _isLoading = true;
+      });
 
-      if (pickedFile != null) {
-        setState(() {
-          _selectedImage = File(pickedFile.path);
-        });
-      }
+      // Use the image picker to select and upload image
+      final imagePickerUtil = ImagePickerUtil();
+      imagePickerUtil.showImageSourceSelection(
+        context,
+        (String imageFilename) async {
+          // Success callback - imageFilename is just the filename, not full URL
+          setState(() {
+            _uploadedImageFilename = imageFilename;
+            _isLoading = false;
+          });
+          _showSnackBar('Image uploaded successfully!');
+        },
+        (String error) {
+          // Error callback
+          setState(() {
+            _isLoading = false;
+          });
+          _showSnackBar('Failed to upload image: $error');
+        },
+        imageType:
+            ImageType.tapu_images, // Use tapu_images type for proper naming
+      );
     } catch (e) {
-      print('Error picking image: $e');
-      _showSnackBar('Failed to pick image.');
+      setState(() {
+        _isLoading = false;
+      });
+      print('Error picking images: $e');
+      _showSnackBar('Failed to pick images.');
     }
   }
 
@@ -443,7 +466,9 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
 
   // --- State Variables ---
   List<String> _selectedEmojis = []; // Multiple emojis for tapu
-  File? _selectedImage; // Single image for tapu banner
+  File?
+      _selectedImage; // Single image for tapu banner (legacy, will be removed)
+  String? _uploadedImageFilename; // Uploaded image filename for tapu banner
   String? _recordedAudioFilePath; // Actual path to recorded audio file
 
   // --- Location Variables ---
@@ -606,7 +631,7 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
       _showSnackBar('Please wait for location to be fetched or try again.');
       return;
     }
-    if (_selectedImage == null) {
+    if (_uploadedImageFilename == null) {
       _showSnackBar('Please add a Tapu banner image.');
       return;
     }
@@ -622,14 +647,13 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
       print('  Longitude: $_currentLongitude');
       print('  Address: $_currentLocationAddress');
 
-      // Create tapu with media uploads using integration service
-      final success = await _appService.createTapuWithMedia(
-      
+      // Create tapu with pre-uploaded image filename
+      final success = await _appService.createTapuWithImageFilenames(
         context: context,
         title: title,
         description: message,
         mood: _selectedEmojis.first, // Use first emoji as primary mood
-        imageFiles: [_selectedImage!],
+        imageFilenames: [_uploadedImageFilename!], // Pass the uploaded filename
         pinIds: [], // Will be populated with nearby pins later
         emojis: _selectedEmojis, // Pass all selected emojis
         latitude: _currentLatitude, // Pass the selected location latitude
@@ -776,17 +800,63 @@ class _CreateTapuScreenState extends State<CreateTapuScreen> {
                                 width: 100,
                                 height: 100,
                                 child: Center(
-                                  child: _selectedImage == null
+                                  child: _uploadedImageFilename == null
                                       ? Image.asset(
                                           "assets/icons/camera.png",
                                           height: 40,
                                         )
                                       : ClipOval(
-                                          child: Image.file(
-                                            _selectedImage!, // Displays the selected image
+                                          child: Image.network(
+                                            ImagePickerUtil()
+                                                .getUrlForUserUploadedImage(
+                                                    _uploadedImageFilename!),
                                             width: 150,
                                             height: 150,
                                             fit: BoxFit.cover,
+                                            loadingBuilder: (context, child,
+                                                loadingProgress) {
+                                              if (loadingProgress == null)
+                                                return child;
+                                              return Container(
+                                                width: 150,
+                                                height: 150,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey[800],
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Center(
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    value: loadingProgress
+                                                                .expectedTotalBytes !=
+                                                            null
+                                                        ? loadingProgress
+                                                                .cumulativeBytesLoaded /
+                                                            loadingProgress
+                                                                .expectedTotalBytes!
+                                                        : null,
+                                                    strokeWidth: 2,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                              return Container(
+                                                width: 150,
+                                                height: 150,
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey[800],
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Icon(
+                                                  Icons.error,
+                                                  color: Colors.white,
+                                                  size: 30,
+                                                ),
+                                              );
+                                            },
                                           ),
                                         ),
                                 ),

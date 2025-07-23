@@ -4,7 +4,7 @@ import 'package:memory_pins_app/models/tapu.dart';
 import 'package:memory_pins_app/models/tapus.dart';
 import 'package:memory_pins_app/models/map_coordinates.dart';
 import 'package:memory_pins_app/presentation/Pages/tapu_detail_screen.dart';
-import 'package:memory_pins_app/presentation/Widgets/map_tapu_widget.dart';
+import 'package:memory_pins_app/presentation/Widgets/flutter_map_tapu_widget.dart';
 import 'package:memory_pins_app/presentation/Widgets/map_detail_card.dart';
 import 'package:memory_pins_app/services/edit_profile_provider.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
@@ -29,7 +29,8 @@ class _MapViewScreenState extends State<MapViewScreen> {
   Tapu? _selectedTapu;
   final DraggableScrollableController _bottomSheetController =
       DraggableScrollableController();
-  final GlobalKey<TapuMapWidgetState> _mapKey = GlobalKey<TapuMapWidgetState>();
+  final GlobalKey<FlutterMapTapuWidgetState> _mapKey =
+      GlobalKey<FlutterMapTapuWidgetState>();
   String _currentCity = 'Loading...';
   final LocationService _locationService = LocationService();
   bool _isFirstLoad = true; // Add flag for first load
@@ -37,14 +38,27 @@ class _MapViewScreenState extends State<MapViewScreen> {
   @override
   void initState() {
     super.initState();
-    // Load tapus when screen initializes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadTapus();
+    // Load tapus and profile when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadTapus();
+      await _loadUserProfile(); // Load user profile data
       _getCurrentCity();
     });
   }
 
-  void _loadTapus() async {
+  // Load user profile data
+  Future<void> _loadUserProfile() async {
+    try {
+      final profileProvider =
+          Provider.of<EditProfileProvider>(context, listen: false);
+      await profileProvider.fetchUserProfileDetails();
+      print('MapViewScreen - User profile loaded successfully');
+    } catch (e) {
+      print('MapViewScreen - Error loading user profile: $e');
+    }
+  }
+
+  Future<void> _loadTapus() async {
     final tapuProvider = Provider.of<TapuProvider>(context, listen: false);
     if (!tapuProvider.isInitialized) {
       print('MapViewScreen - Initializing TapuProvider for first time...');
@@ -220,9 +234,9 @@ class _MapViewScreenState extends State<MapViewScreen> {
 
           return Stack(
             children: [
-              // --- Google Maps Background ---
+              // --- Flutter Map Background ---
               Positioned.fill(
-                child: TapuMapWidget(
+                child: FlutterMapTapuWidget(
                   key: _mapKey,
                   tapus: tapus,
                   onTapuTap: (selectedTapu) {

@@ -32,7 +32,8 @@ class PhotoGridItem extends StatelessWidget {
           },
           errorBuilder: (context, error, stackTrace) => Container(
             color: Colors.white,
-            child: const Icon(Icons.broken_image, color: Colors.white, size: 50),
+            child:
+                const Icon(Icons.broken_image, color: Colors.white, size: 50),
           ),
         ),
       ),

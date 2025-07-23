@@ -8,6 +8,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:memory_pins_app/models/pin.dart';
 import 'package:memory_pins_app/models/tapus.dart';
 import 'package:memory_pins_app/services/location_service.dart';
+import 'package:memory_pins_app/utills/Constants/image_picker_util.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
 
@@ -41,6 +42,12 @@ class TapuDetailMapWidgetState extends State<TapuDetailMapWidget> {
     target: LatLng(0, 0),
     zoom: 12.0,
   );
+
+  // Helper method to convert image filename to full URL
+  String _getImageUrl(String filename) {
+    final imagePickerUtil = ImagePickerUtil();
+    return imagePickerUtil.getUrlForUserUploadedImage(filename);
+  }
 
   // Distance visualization constants
   static const List<double> _distanceCircleRadiiKm = [1.0, 2.0, 3.0, 4.0, 5.0];
@@ -291,10 +298,15 @@ class TapuDetailMapWidgetState extends State<TapuDetailMapWidget> {
 
       // Try to load and draw the tapu image
       try {
-        if (widget.tapu.centerPinImageUrl.isNotEmpty &&
-            widget.tapu.centerPinImageUrl.startsWith('http')) {
-          final response =
-              await http.get(Uri.parse(widget.tapu.centerPinImageUrl));
+        if (widget.tapu.centerPinImageUrl.isNotEmpty) {
+          // Convert filename to full URL
+          final imageUrl = _getImageUrl(widget.tapu.centerPinImageUrl);
+          print('Loading tapu image for tapu ${widget.tapu.id}:');
+          print(
+              '  Original centerPinImageUrl: ${widget.tapu.centerPinImageUrl}');
+          print('  Converted imageUrl: $imageUrl');
+
+          final response = await http.get(Uri.parse(imageUrl));
 
           if (response.statusCode == 200) {
             final codec = await ui.instantiateImageCodec(response.bodyBytes);

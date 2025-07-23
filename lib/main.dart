@@ -30,6 +30,7 @@ import 'package:memory_pins_app/services/auth_service.dart';
 import 'package:memory_pins_app/services/edit_profile_provider.dart';
 
 import 'package:memory_pins_app/services/hive_service.dart';
+import 'package:memory_pins_app/services/inapppurchase_provider.dart';
 import 'package:memory_pins_app/services/location_service.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
@@ -113,6 +114,11 @@ class MyApp extends StatelessWidget {
     );
     return MultiProvider(
       providers: [
+
+        ChangeNotifierProvider<PurchaseProvider>(
+          lazy: false,
+          create: (context) => PurchaseProvider(),
+        ),
         Provider<LocationService>(
           create: (_) => LocationService(),
         ),

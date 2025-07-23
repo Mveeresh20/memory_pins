@@ -456,6 +456,27 @@ class EditProfileProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Method to clear profile cache and reload for new user (call this after login)
+  Future<void> clearAndReloadProfile() async {
+    print('EditProfileProvider - Clearing and reloading profile...');
+
+    // Clear current data
+    profileDetails = null;
+    profilePicture = '';
+    firstNameController.clear();
+    lastNameController?.clear();
+    emailTextController.clear();
+    mobileNumberController.clear();
+
+    // Clear image cache
+    await _clearImageCache();
+
+    // Force reload profile data
+    await fetchUserProfileDetails();
+
+    print('EditProfileProvider - Profile cleared and reloaded successfully');
+  }
+
   /// Update only the user's name and email (no gender required)
   Future<void> updateUserNameAndEmail(
     String name,

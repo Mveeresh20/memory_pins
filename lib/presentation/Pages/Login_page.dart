@@ -5,6 +5,7 @@ import 'package:memory_pins_app/presentation/Widgets/sign_in_button.dart';
 import 'package:memory_pins_app/services/auth_service.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
 import 'package:memory_pins_app/services/app_integration_service.dart';
+import 'package:memory_pins_app/services/edit_profile_provider.dart';
 import 'package:memory_pins_app/providers/user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
@@ -50,6 +51,17 @@ class _LoginPageState extends State<LoginPage> {
 
         if (success) {
           print("User signed in successfully");
+
+          // Clear and reload profile data for the new user
+          try {
+            final profileProvider =
+                Provider.of<EditProfileProvider>(context, listen: false);
+            await profileProvider.clearAndReloadProfile();
+            print("Profile data cleared and reloaded for new user");
+          } catch (e) {
+            print("Error clearing profile cache: $e");
+          }
+
           if (!mounted) return;
           Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
         } else {
@@ -110,6 +122,16 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       if (success) {
+        // Clear and reload profile data for the new user
+        try {
+          final profileProvider =
+              Provider.of<EditProfileProvider>(context, listen: false);
+          await profileProvider.clearAndReloadProfile();
+          print("Profile data cleared and reloaded for Apple sign-in user");
+        } catch (e) {
+          print("Error clearing profile cache: $e");
+        }
+
         Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       } else {
         final errorMessage = userProvider.error ?? 'Apple sign in failed';
@@ -164,6 +186,16 @@ class _LoginPageState extends State<LoginPage> {
       });
 
       if (success) {
+        // Clear and reload profile data for the new user
+        try {
+          final profileProvider =
+              Provider.of<EditProfileProvider>(context, listen: false);
+          await profileProvider.clearAndReloadProfile();
+          print("Profile data cleared and reloaded for anonymous sign-in user");
+        } catch (e) {
+          print("Error clearing profile cache: $e");
+        }
+
         Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
       } else {
         final errorMessage = userProvider.error ?? 'Anonymous sign in failed';

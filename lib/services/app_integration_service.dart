@@ -90,15 +90,16 @@ class AppIntegrationService {
     try {
       final tapuProvider = context.read<TapuProvider>();
 
-      // Upload images to AWS
-      final imageUrls = await _mediaService.uploadImagesDirectly(imageFiles);
+      // Upload images to AWS and get filenames (not full URLs)
+      final imageFilenames =
+          await _mediaService.uploadTapuImagesDirectly(imageFiles);
 
-      // Create tapu in Firebase
+      // Create tapu in Firebase with filenames only
       final success = await tapuProvider.createTapu(
         title: title,
         description: description,
         mood: mood,
-        photoUrls: imageUrls,
+        photoUrls: imageFilenames, // Store filenames only, not full URLs
         pinIds: pinIds,
         emojis: emojis ?? [mood], // Use provided emojis or fallback to mood
         latitude: latitude, // Pass latitude
@@ -108,6 +109,40 @@ class AppIntegrationService {
       return success;
     } catch (e) {
       print('Error creating tapu with media: $e');
+      return false;
+    }
+  }
+
+  /// Create a tapu with pre-uploaded image filenames
+  Future<bool> createTapuWithImageFilenames({
+    required BuildContext context,
+    required String title,
+    required String description,
+    required String mood,
+    required List<String> imageFilenames,
+    required List<String> pinIds,
+    List<String>? emojis,
+    double? latitude,
+    double? longitude,
+  }) async {
+    try {
+      final tapuProvider = context.read<TapuProvider>();
+
+      // Create tapu in Firebase with filenames only
+      final success = await tapuProvider.createTapu(
+        title: title,
+        description: description,
+        mood: mood,
+        photoUrls: imageFilenames, // Store filenames only, not full URLs
+        pinIds: pinIds,
+        emojis: emojis ?? [mood], // Use provided emojis or fallback to mood
+        latitude: latitude, // Pass latitude
+        longitude: longitude, // Pass longitude
+      );
+
+      return success;
+    } catch (e) {
+      print('Error creating tapu with image filenames: $e');
       return false;
     }
   }

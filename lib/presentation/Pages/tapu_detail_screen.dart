@@ -6,7 +6,7 @@ import 'package:memory_pins_app/models/tapu_pins_item.dart';
 import 'package:memory_pins_app/models/tapuattachment.dart';
 import 'package:memory_pins_app/models/tapus.dart';
 import 'package:memory_pins_app/models/pin.dart';
-import 'package:memory_pins_app/presentation/Widgets/tapu_detail_map_widget.dart';
+import 'package:memory_pins_app/presentation/Widgets/flutter_map_tapu_detail_widget.dart';
 import 'package:memory_pins_app/presentation/Widgets/tapu_pins_card.dart';
 import 'package:memory_pins_app/presentation/Pages/pin_detail_screen.dart';
 import 'package:memory_pins_app/presentation/Widgets/pin_detail_popup.dart';
@@ -20,6 +20,7 @@ import 'package:memory_pins_app/services/auth_service.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/label_text_style.dart';
+import 'package:memory_pins_app/utills/Constants/image_picker_util.dart';
 
 class TapuDetailScreen extends StatefulWidget {
   final Tapus tapu;
@@ -35,16 +36,40 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
   bool _isLoading = true;
   String? _error;
   String? _creatorUsername;
+  String? _creatorProfileImageUrl;
   final DraggableScrollableController _bottomSheetController =
       DraggableScrollableController();
+
+  // Helper method to convert image filename to full URL
+  String _getImageUrl(String filename) {
+    final imagePickerUtil = ImagePickerUtil();
+    return imagePickerUtil.getUrlForUserUploadedImage(filename);
+  }
 
   @override
   void initState() {
     super.initState();
     print('TapuDetailScreen initialized with Tapu: ${widget.tapu.name}');
     print('Tapu userId: ${widget.tapu.userId}');
-    _loadNearbyPins();
-    _loadCreatorUsername();
+
+    // Defer loading to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadUserProfile(); // Load user profile data first
+      _loadNearbyPins();
+      _loadCreatorInfo();
+    });
+  }
+
+  // Load user profile data
+  Future<void> _loadUserProfile() async {
+    try {
+      final profileProvider =
+          Provider.of<EditProfileProvider>(context, listen: false);
+      await profileProvider.fetchUserProfileDetails();
+      print('TapuDetailScreen - User profile loaded successfully');
+    } catch (e) {
+      print('TapuDetailScreen - Error loading user profile: $e');
+    }
   }
 
   Future<void> _loadNearbyPins() async {
@@ -90,9 +115,10 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
 
   // Convert Pin to PinDetail for navigation
   PinDetail _convertPinToPinDetail(Pin pin) {
-    // Convert image URLs to PhotoItem list
-    List<PhotoItem> photos =
-        pin.imageUrls.map((url) => PhotoItem(imageUrl: url)).toList();
+    // Convert image URLs to PhotoItem list with proper URL conversion
+    List<PhotoItem> photos = pin.imageUrls
+        .map((url) => PhotoItem(imageUrl: _getImageUrl(url)))
+        .toList();
 
     // Convert audio URLs to AudioItem list
     List<AudioItem> audios = [];
@@ -129,36 +155,49 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
     return tapuProvider.getPinDistanceFromTapu(widget.tapu, pin);
   }
 
-  // Load Tapu creator's username
-  Future<void> _loadCreatorUsername() async {
+  // Load Tapu creator's information (username and profile image)
+  Future<void> _loadCreatorInfo() async {
     try {
       final authService = AuthService();
 
       // Get the creator's userId from the Tapu
       final creatorUserId = widget.tapu.userId;
 
-      print('Loading creator username for Tapu: ${widget.tapu.name}');
+      print('Loading creator info for Tapu: ${widget.tapu.name}');
       print('Creator userId: $creatorUserId');
 
       if (creatorUserId != null) {
         // Fetch the creator's username using their userId
         final username = await authService.getUsernameByUserId(creatorUserId);
         print('Found creator username: $username');
+
+        // Fetch the creator's profile image URL using their userId
+        final profileImageUrl =
+            await authService.getProfileImageUrlByUserId(creatorUserId);
+        print('Found creator profile image URL: $profileImageUrl');
+
         setState(() {
           _creatorUsername = username ?? 'Unknown User';
+          _creatorProfileImageUrl = profileImageUrl;
         });
       } else {
         // Fallback to current user if no creator userId is available
         print('No creator userId found, using current user as fallback');
         final username = await authService.getCurrentUserUsername();
+        final profileProvider =
+            Provider.of<EditProfileProvider>(context, listen: false);
+        final profileImageUrl = profileProvider.getProfileImageUrlForScreens();
+
         setState(() {
           _creatorUsername = username ?? 'Unknown User';
+          _creatorProfileImageUrl = profileImageUrl;
         });
       }
     } catch (e) {
-      print('Error loading creator username: $e');
+      print('Error loading creator info: $e');
       setState(() {
         _creatorUsername = 'Unknown User';
+        _creatorProfileImageUrl = null;
       });
     }
   }
@@ -169,9 +208,9 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
       backgroundColor: Colors.grey[100],
       body: Stack(
         children: [
-          // --- Real-time Google Maps Background ---
+          // --- Real-time Flutter Map Background ---
           Positioned.fill(
-            child: TapuDetailMapWidget(
+            child: FlutterMapTapuDetailWidget(
               tapu: widget.tapu,
               pins: _nearbyPins,
               onPinTap: (pin) {
@@ -180,6 +219,7 @@ class _TapuDetailScreenState extends State<TapuDetailScreen> {
               },
               isLoading: _isLoading,
               getPinDistance: (pin) => _getDistanceFromTapu(pin),
+              userProfileImageUrl: _creatorProfileImageUrl,
             ),
           ),
 

@@ -55,6 +55,29 @@ class AWSService {
     }
   }
 
+  /// Upload tapu image and return only the filename (not full URL)
+  Future<String> uploadTapuImage(File imageFile) async {
+    try {
+      final fileName =
+          'IMG_Tapu_${DateTime.now().millisecondsSinceEpoch}${path.extension(imageFile.path)}';
+
+      // Use existing AWS upload function
+      final uploadedFileName = await AppConstant.uploadImageToAWS(
+        file: imageFile,
+        fileName: fileName,
+      );
+
+      if (uploadedFileName != null) {
+        // Return only the filename, not the full URL
+        return uploadedFileName;
+      } else {
+        throw Exception('Failed to upload tapu image');
+      }
+    } catch (e) {
+      throw Exception('Error uploading tapu image: $e');
+    }
+  }
+
   /// Upload multiple pin images and return only filenames (not full URLs)
   Future<List<String>> uploadPinImages(List<File> imageFiles) async {
     final List<String> uploadedFilenames = [];
@@ -65,6 +88,23 @@ class AWSService {
         uploadedFilenames.add(fileName);
       } catch (e) {
         print('Failed to upload pin image ${imageFile.path}: $e');
+        // Continue with other images even if one fails
+      }
+    }
+
+    return uploadedFilenames;
+  }
+
+  /// Upload multiple tapu images and return only filenames (not full URLs)
+  Future<List<String>> uploadTapuImages(List<File> imageFiles) async {
+    final List<String> uploadedFilenames = [];
+
+    for (final imageFile in imageFiles) {
+      try {
+        final fileName = await uploadTapuImage(imageFile);
+        uploadedFilenames.add(fileName);
+      } catch (e) {
+        print('Failed to upload tapu image ${imageFile.path}: $e');
         // Continue with other images even if one fails
       }
     }

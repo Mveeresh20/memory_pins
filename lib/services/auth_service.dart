@@ -346,4 +346,24 @@ class AuthService {
       return null;
     }
   }
+
+  // Get profile image URL by userId
+  Future<String?> getProfileImageUrlByUserId(String userId) async {
+    try {
+      final userRef = FirebaseDatabase.instance
+          .ref(firebasepath)
+          .child(userId)
+          .child('profileDetails');
+
+      final snapshot = await userRef.get();
+      if (snapshot.exists) {
+        final data = snapshot.value as Map<dynamic, dynamic>;
+        return data['profileImageUrl'] as String?;
+      }
+      return null;
+    } catch (e) {
+      print('Error getting profile image URL by userId: $e');
+      return null;
+    }
+  }
 }

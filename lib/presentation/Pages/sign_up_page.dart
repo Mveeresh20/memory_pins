@@ -7,6 +7,7 @@ import 'package:memory_pins_app/presentation/Widgets/sign_in_button.dart';
 import 'package:memory_pins_app/services/auth_service.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
 import 'package:memory_pins_app/services/app_integration_service.dart';
+import 'package:memory_pins_app/services/edit_profile_provider.dart';
 import 'package:memory_pins_app/providers/user_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
@@ -21,7 +22,7 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage> {
   bool _isLoading = false;
-   bool _acceptedTerms = false;
+  bool _acceptedTerms = false;
   final AuthService _authService = AuthService();
   final AppIntegrationService _appService = AppIntegrationService();
 
@@ -77,6 +78,16 @@ class _SignUpPageState extends State<SignUpPage> {
       });
 
       if (success) {
+        // Clear and reload profile data for the new user
+        try {
+          final profileProvider =
+              Provider.of<EditProfileProvider>(context, listen: false);
+          await profileProvider.clearAndReloadProfile();
+          print("Profile data cleared and reloaded for new sign-up user");
+        } catch (e) {
+          print("Error clearing profile cache: $e");
+        }
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => HomeScreen()),
@@ -136,6 +147,16 @@ class _SignUpPageState extends State<SignUpPage> {
       });
 
       if (success) {
+        // Clear and reload profile data for the new user
+        try {
+          final profileProvider =
+              Provider.of<EditProfileProvider>(context, listen: false);
+          await profileProvider.clearAndReloadProfile();
+          print("Profile data cleared and reloaded for Apple sign-up user");
+        } catch (e) {
+          print("Error clearing profile cache: $e");
+        }
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => HomeScreen()),
@@ -193,6 +214,16 @@ class _SignUpPageState extends State<SignUpPage> {
       });
 
       if (success) {
+        // Clear and reload profile data for the new user
+        try {
+          final profileProvider =
+              Provider.of<EditProfileProvider>(context, listen: false);
+          await profileProvider.clearAndReloadProfile();
+          print("Profile data cleared and reloaded for anonymous sign-up user");
+        } catch (e) {
+          print("Error clearing profile cache: $e");
+        }
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => HomeScreen()),
@@ -537,7 +568,6 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ),
               SizedBox(height: 16),
-
 
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),

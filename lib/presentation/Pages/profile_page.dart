@@ -9,6 +9,7 @@ import 'package:memory_pins_app/presentation/Widgets/profile_option_tile.dart';
 import 'package:memory_pins_app/services/auth_service.dart';
 import 'package:memory_pins_app/services/edit_profile_provider.dart';
 import 'package:memory_pins_app/services/navigation_service.dart';
+import 'package:memory_pins_app/services/inapppurchase_provider.dart';
 import 'package:memory_pins_app/utills/Constants/app_colors.dart';
 import 'package:memory_pins_app/utills/Constants/images.dart';
 import 'package:memory_pins_app/utills/Constants/label_text_style.dart';
@@ -268,7 +269,13 @@ class _ProfilePageState extends State<ProfilePage> {
                                 isSelected: selectedTileIndex == 3,
                                 image: Images.restoreImg,
                                 title: "Restore Purchase",
-                                onTap: () {
+                                onTap: () async {
+                                  final purchaseProvider =
+                                      Provider.of<PurchaseProvider>(context,
+                                          listen: false);
+                                  if (purchaseProvider.products.isNotEmpty) {
+                                    await purchaseProvider.restoreItem();
+                                  }
                                   setState(() {
                                     selectedTileIndex = 3;
                                   });
